@@ -1,12 +1,17 @@
-## Repository for PDFBench: Benchmark of Protein Design from Function
+## Repository for PDFBench: A Benchmark for De novo Protein Design from Function
+
 ### 1. Environment
 ```shell
 conda creat -n PDF --file reqiurements.txt
 conda activate PDF
 ```
+
 ### 2. Preparsion
+
 #### 2.1. ProTrek and EvoLlama
-Download repository for both [ProTrek](https://github.com/westlake-repl/ProTrek) and [EvoLlama](https://github.com/sornkL/EvoLlama) into `src` folder, and download the [ProTrek-650M](https://huggingface.co/westlake-repl/ProTrek_650M_UniRef50) weights follow the its guideline.
+
+Download repository for both [ProTrek](https://github.com/westlake-repl/ProTrek) and [EvoLlama](https://github.com/sornkL/EvoLlama) into `src` folder, and download the [ProTrek-650M weights](https://huggingface.co/westlake-repl/ProTrek_650M_UniRef50) and [EvoLlama weights](https://huggingface.co/nwliu/EvoLlama-Oracle-Molinst-Protein-Design) following their guidelines.
+
 #### 2.2. TMscore
 Download TMscore following the [ZhangGroup](https://zhanggroup.org/TM-score/). According to the guidance, your directionary may look like:
 ```shell
@@ -65,6 +70,7 @@ The path to **MMSeqs DB** is `path/to/mmseqs/DB/uniprotdb` or `path/to/mmseqs/DB
 **Warning:** The searching DB bulided from UniProtKB takes up about **500 GB** of disk space and runs for tens of hours, and it takes nearly **1 hour** to complete the searching of one single sequence if no GPU acceleration!
 
 ### 3. prepare your evaluation data
+
 we highly recommand that you organize evaluation data like [us](./example/data/example_data.json).
 - `instruction`: Protein functions described in natural language
 - `reference`: Ground Truth sequence
