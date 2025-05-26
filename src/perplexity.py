@@ -15,8 +15,6 @@ from transformers import (
     logging,
 )
 
-from src.eval.utils import boxplot
-
 logging.set_verbosity_error()
 warnings.filterwarnings(
     "ignore",
@@ -128,8 +126,6 @@ def main(
     num_workers: int = 4,
     sequence_file: Optional[str] = None,
     evaluation_file: Optional[str] = None,
-    evaluation_dir: Optional[str] = None,
-    save_plot: bool = False,
 ):
     assert sequence_file and evaluation_file
 
@@ -171,11 +167,6 @@ def main(
     for metric in support_metrics:
         mean = np.mean([sample[metric] for sample in results])
         print(f"mean {metric}: {mean}")
-
-    if save_plot:
-        assert evaluation_dir
-        for metric in support_metrics:
-            boxplot(evaluation_dir, metric)
 
 
 def test_compute_perplext_progen(seqs):

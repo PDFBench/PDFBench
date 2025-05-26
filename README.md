@@ -66,15 +66,15 @@ mmseqs makepaddedseqdb ./uniprotdb ./uniprotdb_gpu
 # Craeating Indexes for searching acceleration. (tens of hours)
 mmseqs createindex ./uniprotdb_gpu tmp --index-subset 2
 ```
-The path to **MMSeqs DB** is `path/to/mmseqs/DB/uniprotdb` or `path/to/mmseqs/DB/uniprotdb_gpu`.
+The path to **MMSeqs DB** is `/path/to/mmseqs/DB/uniprotdb` or `/path/to/mmseqs/DB/uniprotdb_gpu`.
 **Warning:** The searching DB bulided from UniProtKB takes up about **500 GB** of disk space and runs for tens of hours, and it takes nearly **1 hour** to complete the searching of one single sequence if no GPU acceleration!
 
 ### 3. prepare your evaluation data
-
-we highly recommand that you organize evaluation data like [us](./example/data/example_data.json).
+we highly recommand that you organize evaluation [data like us](./example/data/example_data.json).
 - `instruction`: Protein functions described in natural language
-- `reference`: Ground Truth sequence
-- `response`: Designed sequence
+- `reference`: Ground Truth protein sequence
+- `response`: Designed protein sequence
+
 ### 4. Let's Go Evaluation!
 Edit your preparesion in `./scripts/eval.sh`.
 ```shell

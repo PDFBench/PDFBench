@@ -4,12 +4,9 @@ import os
 import subprocess
 import tempfile
 import warnings
-from typing import Optional
 
 import numpy as np
 from tqdm.auto import tqdm
-
-from src.eval.utils import boxplot
 
 
 def compute_novelty(
@@ -189,10 +186,7 @@ def main(
     evaluation_file: str,
     mmseqs_path: str,
     database_path: str,
-    # temp_folder: str,
-    evaluation_dir: Optional[str] = None,
     num_workers: int = 4,
-    save_plot: bool = False,
 ) -> None:
     assert sequence_file and evaluation_file
 
@@ -255,11 +249,6 @@ def main(
     for metric in support_metrics:
         mean = np.mean([sample[metric] for sample in results])
         print(f"mean {metric}: {mean:.2f}")
-
-    if save_plot:
-        assert evaluation_dir
-        for metric in support_metrics:
-            boxplot(evaluation_dir, metric)
 
 
 def test():

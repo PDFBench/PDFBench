@@ -7,8 +7,6 @@ import tempfile
 import numpy as np
 from tqdm.auto import tqdm
 
-from src.eval.utils import boxplot
-
 
 def process_m8_file(file_path, n_prot=2):
     similaritys = []
@@ -111,12 +109,7 @@ def _main(uid: int, queue: mp.Queue, subset: list, mmseqs_path: str):
 
 
 def main(
-    num_workers: int,
-    sequence_file: str,
-    evaluation_file: str,
-    mmseqs_path: str,
-    evaluation_dir: str,
-    save_plot: bool = False,
+    num_workers: int, sequence_file: str, evaluation_file: str, mmseqs_path: str
 ):
     assert sequence_file and evaluation_file
 
@@ -157,11 +150,6 @@ def main(
     for metric in support_metrics:
         mean = np.mean([sample[metric] for sample in results])
         print(f"mean {metric}: {mean:.2f}")
-
-    if save_plot:
-        assert evaluation_dir
-        for metric in support_metrics:
-            boxplot(evaluation_dir, metric)
 
 
 def test():

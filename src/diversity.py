@@ -9,8 +9,6 @@ from typing import List
 import numpy as np
 from tqdm.auto import tqdm
 
-from src.eval.utils import boxplot
-
 
 def process_m8_file(file_path, n_prot=3):
     similaritys = []
@@ -145,8 +143,6 @@ def main(
     evaluation_file: str,
     mmseqs_path: str,
     num_workers: int,
-    evaluation_dir: str,
-    save_plot: bool = False,
 ):
     assert num_epoches and model_dir and evaluation_file and mmseqs_path
 
@@ -213,12 +209,7 @@ def main(
     ]
     for metric in support_metrics:
         mean = np.mean([sample[metric] for sample in results])
-        print(f"mean {metric}: {mean}")
-
-    if save_plot:
-        assert evaluation_dir
-        for metric in support_metrics:
-            boxplot(evaluation_dir, metric)
+        print(f"mean {metric}: {mean:.2f}")
 
 
 def test_example_01():

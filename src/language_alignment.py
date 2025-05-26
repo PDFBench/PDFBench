@@ -11,12 +11,12 @@ import torch.nn as nn
 from tqdm.auto import tqdm
 from transformers import BertModel, BertTokenizer, logging
 
-from src.eval.EvoLlama.src.infer.infer import infer, init_evo_llama
-from src.eval.foldability import get_md5_sequence
-from src.eval.ProTrek.model.ProTrek.protrek_trimodal_model import (
+from src.EvoLlama.src.infer.infer import infer, init_evo_llama
+from src.foldability import get_md5_sequence
+from src.ProTrek.model.ProTrek.protrek_trimodal_model import (
     ProTrekTrimodalModel,
 )
-from src.eval.ProTrek.utils.foldseek_util import get_struc_seq
+from src.ProTrek.utils.foldseek_util import get_struc_seq
 
 logging.set_verbosity_error()
 warnings.filterwarnings(
@@ -34,7 +34,7 @@ warnings.filterwarnings(
 def get_cameo_text(instruction: str) -> str:
     # We only keep the keyword part of the instruction for evaluation
     keyword = instruction.removesuffix("The designed protein sequence is ")
-    keyword = re.search(r":\s*(.*)", keyword[:-2]).group(1)
+    keyword = re.search(r":\s*(.*)", keyword[:-2]).group(1)  # type: ignore
 
     return keyword.strip()
 
@@ -252,8 +252,6 @@ def main(
     protrek_path: Optional[str] = None,
     evollama_path: Optional[str] = None,
     llm_path: Optional[str] = None,
-    evaluation_dir: Optional[str] = None,
-    save_plot: bool = False,
 ):
     assert sequence_file and evaluation_file
 

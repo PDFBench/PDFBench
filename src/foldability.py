@@ -6,7 +6,6 @@ import warnings
 from typing import Dict, List
 
 import biotite.structure.io as bsio
-import matplotlib.pyplot as plt
 import numpy as np
 import torch
 from tqdm.auto import tqdm
@@ -85,7 +84,7 @@ def from_sequences_to_pdb_files(
                 "pae": pae.mean(),
             }
         )
-    return ret
+    return ret  # type: ignore
 
 
 def report_foldability_metric(values: List[float], key: str = "plddt"):
@@ -106,52 +105,17 @@ def report_foldability_metric(values: List[float], key: str = "plddt"):
     }
 
 
-def boxplot(evaluation_dir: str, key: str = "plddt"):
-    json_files = []
-    for root, _, files in os.walk(evaluation_dir):
-        for file in files:
-            if file == "foldability.json":
-                json_files.append(os.path.join(root, file))
-
-    # sort json_files by category
-    json_files = sorted(json_files, key=lambda x: x.split("/")[-2])
-
-    data = []
-    labels = []
-    for file in json_files:
-        category = file.split("/")[-2].split(".")[0]
-
-        with open(file, "r") as f:
-            json_data = json.load(f)
-
-        values = [sample[key] for sample in json_data if key in sample]
-        data.append(values)
-        labels.append(category)
-
-    plt.figure(figsize=(10, 6))
-    plt.boxplot(
-        data,
-        labels=labels,
-        patch_artist=True,
-        boxprops=dict(facecolor="#73aedf", alpha=0.7),
-    )
-
-    plt.title(key.upper(), fontsize=16)
-    plt.ylabel(key.upper(), fontsize=12)
-    plt.grid(axis="y", linestyle="--", alpha=0.7)
-
-    plt.xticks(rotation=45)
-    plt.tight_layout()
-
-    plt.savefig(
-        os.path.join(evaluation_dir, f"boxplot_{key}.pdf"), format="pdf"
-    )
-
-
-def _main(uid: int, queue: mp.Queue, subset: list, output_pdb_dir: str):
-    esmfold_path = "/home/nwliu/data/pretrain/esmfold_v1"
+def _main(
+    uid: int,
+    queue: mp.Queue,
+    subset: list,
+    output_pdb_dir: str,
+    esmfold_path: str,
+):
     tokenizer = EsmTokenizer.from_pretrained(esmfold_path)
-    model = EsmForProteinFolding.from_pretrained(esmfold_path).to(f"cuda:{uid}")
+    model: EsmForProteinFolding = EsmForProteinFolding.from_pretrained(
+        pretrained_model_name_or_path=esmfold_path
+    ).to(f"cuda:{uid}")  # type: ignore
     model.esm = model.esm.float()
     model.trunk.set_chunk_size(64)
 
@@ -162,15 +126,19 @@ def _main(uid: int, queue: mp.Queue, subset: list, output_pdb_dir: str):
         position=uid + 1,
         ncols=100,
     ):
-        sequence = item["response"]
+        response = item["response"]
+        reference = item["reference"]
         try:
             res = from_sequences_to_pdb_files(
-                tokenizer, model, [sequence], output_pdb_dir
+                tokenizer, model, [response], output_pdb_dir
             )
             results.extend(res)
+            from_sequences_to_pdb_files(
+                tokenizer, model, [reference], output_pdb_dir
+            )
         except Exception as e:
             if str(e).startswith("CUDA out of memory."):
-                print(f"CUDA out of memory for {sequence[:20]}")
+                print(f"CUDA out of memory for {response[:20]}")
                 continue
             print(e)
             continue
@@ -180,11 +148,10 @@ def _main(uid: int, queue: mp.Queue, subset: list, output_pdb_dir: str):
 
 def main(
     num_workers: int,
-    sequence_file: str = None,
-    evaluation_file: str = None,
-    output_pdb_dir: str = None,
-    save_plot: bool = False,
-    evaluation_dir: str = None,
+    sequence_file: str,
+    esmfold_path: str,
+    evaluation_file: str,
+    output_pdb_dir: str,
 ):
     assert sequence_file and evaluation_file and output_pdb_dir
 
@@ -209,7 +176,14 @@ def main(
             )
             subset = data[begin_idx:end_idx]
             p = mp.Process(
-                target=_main, args=(i, queue, subset, output_pdb_dir)
+                target=_main,
+                args=(
+                    i,
+                    queue,
+                    subset,
+                    output_pdb_dir,
+                    esmfold_path,
+                ),
             )
             p.start()
             processes.append(p)
@@ -233,10 +207,6 @@ def main(
         print(
             report_foldability_metric([sample[key] for sample in results], key)
         )
-
-    if save_plot:
-        for key in ["plddt", "pae"]:
-            boxplot(evaluation_dir, key)
 
 
 if __name__ == "__main__":

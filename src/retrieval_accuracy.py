@@ -11,7 +11,7 @@ import torch.nn.functional as F
 from tqdm.auto import tqdm
 from transformers import logging
 
-from src.eval.ProTrek.model.ProTrek.protrek_trimodal_model import (
+from src.ProTrek.model.ProTrek.protrek_trimodal_model import (
     ProTrekTrimodalModel,
 )
 
@@ -248,8 +248,6 @@ def main(
     model_path: str,
     task: str,
     num_workers: int = 4,
-    evaluation_dir: str = None,
-    save_plot: bool = False,
 ):
     assert sequence_file and evaluation_file
     if not os.path.exists(evaluation_file):
@@ -312,9 +310,6 @@ def main(
 def test():
     device = 3
     print(device)
-    sequence_poll_file = (
-        "/home/jhkuang/data/cache/dynamsa/data/Molinst/inst2seq.json"
-    )
     model_path = "/home/nwliu/data/pretrain/ProTrek_650M_UniRef50"
     config = {
         "protein_config": os.path.join(model_path, "esm2_t33_650M_UR50D"),

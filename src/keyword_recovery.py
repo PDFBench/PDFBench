@@ -8,13 +8,6 @@ import warnings
 from typing import Dict, List, Optional
 
 import numpy as np
-from transformers import (
-    logging,
-)
-
-from src.eval.utils import boxplot
-
-logging.set_verbosity_error()
 
 
 def get_keywords(
@@ -197,10 +190,8 @@ def main(
     num_workers: int = 4,
     sequence_file: Optional[str] = None,
     evaluation_file: Optional[str] = None,
-    evaluation_dir: Optional[str] = None,
     workers_per_scan: int = 4,
-    interpro_scan_path: str = "/home/jhkuang/app/interproscan-5.73-104.0/interproscan.sh",
-    save_plot: bool = False,
+    interpro_scan_path: Optional[str] = None,
 ):
     assert sequence_file and evaluation_file
 
@@ -258,11 +249,6 @@ def main(
     for metric in support_metrics:
         mean = np.mean([sample[metric] for sample in results])
         print(f"mean {metric}: {mean}")
-
-    if save_plot:
-        assert evaluation_dir
-        for metric in support_metrics:
-            boxplot(evaluation_dir, metric)
 
 
 def test():
