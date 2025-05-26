@@ -8,20 +8,18 @@ import warnings
 import numpy as np
 from tqdm.auto import tqdm
 
-from src.eval.utils import boxplot
-
 
 def get_md5_sequence(sequence: str) -> str:
     return hashlib.md5(sequence.encode()).hexdigest()
 
 
 def compute_tm_score(
-    ref: str, res: str, tm_score_path: str, ref_pdb_dir: str, res_pdb_dir: str
+    ref: str, res: str, tm_score_path: str, output_pdb_dir: str
 ):
     md5_ref = get_md5_sequence(ref)
     md5_res = get_md5_sequence(res)
-    pdb_ref = os.path.join(ref_pdb_dir, f"{md5_ref}.pdb")
-    pdb_res = os.path.join(res_pdb_dir, f"{md5_res}.pdb")
+    pdb_ref = os.path.join(output_pdb_dir, f"{md5_ref}.pdb")
+    pdb_res = os.path.join(output_pdb_dir, f"{md5_res}.pdb")
     assert os.path.exists(pdb_ref), f"PDB ref: {pdb_ref}"
     assert os.path.exists(pdb_res), f"PDB res: {pdb_res}"
     args = [
@@ -53,14 +51,10 @@ def _main(
     queue: mp.Queue,
     subset: list,
     tm_score_path: str,
-    ref_pdb_dir: str,
-    res_pdb_dir: str,
+    output_pdb_dir: str,
 ):
-    assert os.listdir(ref_pdb_dir), (
-        "Reference PDB fies do not exists, please run the foldability first."
-    )
-    assert os.listdir(res_pdb_dir), (
-        "Reesponse PDB fies do not exists, please run the foldability first."
+    assert os.listdir(output_pdb_dir), (
+        "PDB fies do not exists, please run the foldability first."
     )
     assert os.path.exists(tm_score_path), (
         "TMScore does not exist, please check."
@@ -83,11 +77,7 @@ def _main(
                 "reference": reference,
                 "response": response,
                 "tm_score": compute_tm_score(
-                    reference,
-                    response,
-                    tm_score_path,
-                    ref_pdb_dir,
-                    res_pdb_dir,
+                    reference, response, tm_score_path, output_pdb_dir
                 ),
             }
             results[idx].update(res)
@@ -103,13 +93,10 @@ def main(
     num_workers: int,
     sequence_file: str,
     evaluation_file: str,
-    ref_pdb_dir: str,
-    res_pdb_dir: str,
+    output_pdb_dir: str,
     tm_score_path: str,
-    evaluation_dir: str,
-    save_plot: bool = False,
 ):
-    assert sequence_file and evaluation_file and ref_pdb_dir and res_pdb_dir
+    assert sequence_file and evaluation_file and output_pdb_dir
 
     if not os.path.exists(evaluation_file):
         mp.set_start_method("spawn", force=True)
@@ -130,14 +117,7 @@ def main(
             subset = data[begin_idx:end_idx]
             p = mp.Process(
                 target=_main,
-                args=(
-                    i,
-                    queue,
-                    subset,
-                    tm_score_path,
-                    ref_pdb_dir,
-                    res_pdb_dir,
-                ),
+                args=(i, queue, subset, tm_score_path, output_pdb_dir),
             )
             p.start()
             processes.append(p)
@@ -169,15 +149,13 @@ def test():
     reference = "MSVLTKDRIIEIIERKTGMSREEIEEEIRKIMEEDPYLSEQGAAALLAERLGIDLIEKEEVSLMRISELYPGMDPREVNVVGRVLKKYPPREYTRKDGSVGRVASLIIYDDSGRARVVLWDAKVSEYYNKIEVGDVIKVLDAQVKESLSGLPELHINFRARIILNPDDPRVEMIPPLEEVRVATYTRKKIKDIEAGDRFVEVRGTIAKVYRVLTYDACPECKKKVDYDEGLGVWICPEHGEVQPIKMTILDFGLDDGTGYIRVTLFGDDAEELLGVSPEEIAEKIKELEESGLTTKEAARKLAEDEFYNIIGREIVVRGNVIEDRFLGLILRASSWEDVDYRREIERIKEELEKLGVM"
     response = "MAIAETELTVEARQLGIAIIRAGSAQAALRELLPDARGEQEELEGARGAARLAALDRAIAAASDDAAEAGDSPLRLDTLTAADAEREEDLGLALRELGERGGLRDALTLLEPLAPEAGTPTFTVVVDPVDGGPLETIVRDAGAGGPLAGLTVTGARGTGKTTLASLVAAAIAADAGDVLGVDVREDPAAAASATPVDPRTPRTLPDSAVLALADRGITLDGSAGRGGSGGVVVVDDVRVVRGTPDEPGIDVVVEDGEGDDAETEGRPGTRSRAPADDPAGAEPAAVAVPEPAPRETTRRLAERAVAEAARVAAAVPERRRELEAEVAGRAEAGRALLDVSVRTPGEVVAIGAGTTLRLTRALGGVGDLLAREVDPAEADLAGLGDLVDVLAVLGSSSEGAGVEPGVVEFAPATGETLAVRTARRGRVDFAVLDAPGPATTRSTLTLLSALGTPADPAEVLGATVRYPTTVAFVSPDPVVPGRVDGTRVIVRLLTTPTPLRPERDVRAATDL"
     tm_score_path = "/home/jhkuang/app/TMscore/TMscore"
-    ref_pdb_dir = "/home/jhkuang/data/cache/dynamsa/eval/test_esm_w_denovo/ground_truth/pdb_esmfold_v1"
-    res_pdb_dir = "/home/jhkuang/data/cache/dynamsa/eval/test_esm_w_denovo/baseline_proteindt_swissprotmolinst/1/pdb_esmfold_v1"
+    output_pdb_dir = ""
     print(
         compute_tm_score(
             reference,
             response,
             tm_score_path,
-            ref_pdb_dir,
-            res_pdb_dir,
+            output_pdb_dir,
         )
     )
 

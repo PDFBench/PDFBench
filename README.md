@@ -1,4 +1,5 @@
 ## Repository for PDFBench: A Benchmark for De novo Protein Design from Function
+The paper can be viewed on the homepage: https://pdfbench.github.io/
 
 ### 1. Environment
 ```shell
@@ -23,6 +24,7 @@ tree . -L 1
 The path to **TMscore** executable file is `/path/to/TMscore/TMscore`. 
 
 #### 2.3. InterProScan
+InterProScan need Java11!
 ```shell
 cd /path/to/interproscan
 wget http://ftp.ebi.ac.uk/pub/software/unix/iprscan/5/5.74.105/interproscan-5.74.105-64-bit.tar.gz
@@ -69,8 +71,11 @@ mmseqs createindex ./uniprotdb_gpu tmp --index-subset 2
 The path to **MMSeqs DB** is `/path/to/mmseqs/DB/uniprotdb` or `/path/to/mmseqs/DB/uniprotdb_gpu`.
 **Warning:** The searching DB bulided from UniProtKB takes up about **500 GB** of disk space and runs for tens of hours, and it takes nearly **1 hour** to complete the searching of one single sequence if no GPU acceleration!
 
+#### 2.5. ESMFold
+Download ESMFold from [huggingface](https://huggingface.co/facebook/esmfold_v1), and the path to ESMFold weights is `/path/to/esmfold/weights/folder`.
+
 ### 3. prepare your evaluation data
-we highly recommand that you organize evaluation [data like us](./example/data/example_data.json).
+we highly recommand that you organize evaluation data like us, see `./example/data/example_data.json`.
 - `instruction`: Protein functions described in natural language
 - `reference`: Ground Truth protein sequence
 - `response`: Designed protein sequence

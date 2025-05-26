@@ -14,8 +14,11 @@ TASK=description-guided # keyword-guided task need more preparsion, see README
 # region 1.1.Evaluation Settings(See README)
 # ProTrek weights
 PROTREK=/path/to/ProTrek-650M/weights/folder
+# EvoLlama weights
 EVOLLAMA=/path/to/EvoLlama/weights/folder
 LLAMA=/path/to/Llama-3.2-3B-Instruct/weigths/folder
+# ESMFold weights
+ESMFOLD=/path/to/esmfold/weights/folder
 # MMseqs2
 MMSEQS_EX=/path/to/mmseqs/bin/mmseqs
 MMSEQS_DB=/path/to/mmseqs/DB/uniprotdb_gpu
@@ -39,12 +42,23 @@ NUM_DEVICES=$(echo $CUDA_VISIBLE_DEVICES | awk -F "," '{print NF}')
 # endregion Device
 
 # region 1.3.Setting Display
-echo ">>> [Running Environment] >>>"
-echo NUM_DEVICES: ${NUM_DEVICES}
-echo CUDA_VISIBLE_DEVICES: ${CUDA_VISIBLE_DEVICES}
-echo NUM_WORKERS: ${NUM_WORKERS}
-echo WORKERS_PER_INTERPRO: ${WORKERS_PER_INTERPRO}
-echo "<<< [Running Environment] <<<"
+echo ">>>  $(date "+[%-m-%d-%H:%M:%S]") [Your Settings] >>>"
+echo Project Root: ${PROJECT_ROOT}
+echo Evaluation Directory: ${EVAL_DIR}
+echo Task: ${TASK}
+echo ">>1.Tools"
+echo >PROTREK: ${PROTREK}
+echo >EVOLLAMA: ${EVOLLAMA}
+echo >LLAMA: ${LLAMA}
+echo >MMSEQS_EX: ${MMSEQS_EX}
+echo >MMSEQS_DB: ${MMSEQS_DB}
+echo >INTERPRO_SCAN_EX: ${INTERPRO_SCAN_EX}
+echo >TM_SCORE_EX: ${TM_SCORE_EX}
+echo ">>Devices"
+echo >NUM_DEVICES: ${NUM_DEVICES}
+echo >CUDA_VISIBLE_DEVICES: ${CUDA_VISIBLE_DEVICES}
+echo >NUM_WORKERS: ${NUM_WORKERS}
+echo >WORKERS_PER_INTERPRO: ${WORKERS_PER_INTERPRO}
 # endregion
 
 # endregion 1.Settings
@@ -86,6 +100,7 @@ echo ">>> $(date "+[%-m-%d-%H:%M:%S]") [Foldability] >>>"
 python -m src.foldability \
 --num-workers ${NUM_DEVICES} \
 --sequence-file ${EVAL_DIR}/designed.json \
+--esmfold-path ${ESMFOLD} \
 --evaluation-file ${EVAL_DIR}/foldability.json \
 --output-pdb-dir ${EVAL_DIR}/pdb_esmfold_v1
 

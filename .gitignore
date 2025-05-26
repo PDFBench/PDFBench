@@ -2,3 +2,7 @@ src/EvoLlama/*
 src/ProTrek/*
 
 test_*
+temp/
+*.pdb
+*.cpython-39.pyc
+

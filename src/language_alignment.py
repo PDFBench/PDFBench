@@ -31,7 +31,7 @@ warnings.filterwarnings(
 )
 
 
-def get_cameo_text(instruction: str) -> str:
+def get_text_from_keywords(instruction: str) -> str:
     # We only keep the keyword part of the instruction for evaluation
     keyword = instruction.removesuffix("The designed protein sequence is ")
     keyword = re.search(r":\s*(.*)", keyword[:-2]).group(1)  # type: ignore
@@ -39,7 +39,7 @@ def get_cameo_text(instruction: str) -> str:
     return keyword.strip()
 
 
-def get_molinst_text(instruction: str) -> str:
+def get_text_from_description(instruction: str) -> str:
     # We only keep the function part of the instruction for evaluation
     function = re.sub(r"^.*?(1\.)", r"\1", instruction)
     function = function.removesuffix("The designed protein sequence is ")
@@ -261,7 +261,11 @@ def main(
         with open(sequence_file, "r") as f:
             data = json.load(f)
 
-        get_text = get_molinst_text if task == "molinst" else get_cameo_text
+        get_text = (
+            get_text_from_description
+            if task == "description-guided"
+            else get_text_from_keywords
+        )
         data = [
             (
                 get_text(item["instruction"]),
