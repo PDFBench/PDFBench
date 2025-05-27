@@ -139,12 +139,13 @@ def _main(
 
 def main(
     num_epoches: int,
-    model_dir: str,
+    eval_dir: str,
+    sequence_file_name: str,
     evaluation_file: str,
     mmseqs_path: str,
     num_workers: int,
 ):
-    assert num_epoches and model_dir and evaluation_file and mmseqs_path
+    assert num_epoches and eval_dir and evaluation_file and mmseqs_path
 
     if not os.path.exists(evaluation_file):
         mp.set_start_method("spawn", force=True)
@@ -152,7 +153,9 @@ def main(
         # collect data
         data = []
         for epoch in range(1, num_epoches + 1):
-            sequence_file = os.path.join(model_dir, str(epoch), "molinst.json")
+            sequence_file = os.path.join(
+                eval_dir, str(epoch), sequence_file_name
+            )
             assert os.path.exists(sequence_file), (
                 f"{sequence_file} does not exist"
             )
