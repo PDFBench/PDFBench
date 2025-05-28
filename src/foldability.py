@@ -137,9 +137,12 @@ def _main(
                 tokenizer, model, [reference], output_pdb_dir
             )
         except Exception as e:
+            # When sequence is too long, it may cause CUDA out of memory error
+            # 24GB memory may not be enough for some special sequences
             if str(e).startswith("CUDA out of memory."):
                 print(f"CUDA out of memory for {response[:20]}")
                 continue
+            # Other exceptions, haven't happen in our experiments.
             print(e)
             continue
 
@@ -153,7 +156,7 @@ def main(
     evaluation_file: str,
     output_pdb_dir: str,
 ):
-    assert sequence_file and evaluation_file and output_pdb_dir
+    assert sequence_file and evaluation_file and output_pdb_dir and esmfold_path
 
     if not os.path.exists(evaluation_file):
         mp.set_start_method("spawn", force=True)

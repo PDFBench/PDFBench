@@ -72,16 +72,46 @@ The path to **MMSeqs DB** is `/path/to/mmseqs/DB/uniprotdb` or `/path/to/mmseqs/
 **Warning:** The searching DB bulided from UniProtKB takes up about **500 GB** of disk space and runs for tens of hours, and it takes nearly **1 hour** to complete the searching of one single sequence if no GPU acceleration!
 
 #### 2.5. ESMFold
-Download ESMFold from [huggingface](https://huggingface.co/facebook/esmfold_v1), and the path to ESMFold weights is `/path/to/esmfold/weights/folder`.
+Download ESMFold from [huggingface](https://huggingface.co/facebook/esmfold_v1), and the path to ESMFold weights is `/path/to/esmfold/weights/folder`
 
-### 3. prepare your evaluation data
-we highly recommand that you organize evaluation data like us, see `./example/data/example_data.json`.
+#### 2.6. Modify your function-parser
+See `src/utils.py`, we provide two parser for Mol-Instructions and CAMEOTest as follows,
+```python
+"""
+Keyword-guided Task
+"""
+source: str = "Generate a protein sequence for a novel protein that integrates the following function keywords: Cyt_c-like_dom. The designed protein sequence is "
+def get_text_from_keywords(instruction: str) -> str:
+    # Function for parse keywrods from text
+    keyword = instruction.removesuffix("The designed protein sequence is ")
+    keyword = re.search(r":\s*(.*)", keyword[:-2]).group(1)
+    return keyword.strip()
+keywords: str = get_text_from_keywords(source)  
+# Keywords 'Cyt_c-like_dom' left only
+
+"""
+Description-guided Task
+"""
+source: str = "Synthesize a protein sequence with the appropriate folding and stability properties for the desired function. 1. The protein should be able to modulate glycine decarboxylation via glycine cleavage system in a way that leads to a desirable outcome. The designed protein sequence is "
+def get_text_from_description(instruction: str) -> str:
+    # Function for parse description from text
+    function = re.sub(r"^.*?(1\.)", r"\1", instruction)
+    function = function.removesuffix("The designed protein sequence is ")
+    return function.strip()
+description: str = get_text_from_description(source)
+# Additional prompt 'The designed protein sequence is ' is deleted.
+```
+If your `Function` description/keyword differs, you must modify these two funciton to get coorect performance in `ProTrek Score`, `Evollama Score` and `Retrieval Acccuracy`.
+
+### 3. Prepare your evaluation data
+we highly recommand that you organize evaluation data like us, see `./example/data/example_data.json`
 - `instruction`: Protein functions described in natural language
 - `reference`: Ground Truth protein sequence
 - `response`: Designed protein sequence
 
 ### 4. Let's Go Evaluation!
-Edit your preparesion in `./scripts/eval.sh`.
+We Provide two examples for single and batch evaluation. You may edit your preparesion in `./scripts/eval.sh` following them.
 ```shell
 zsh scripts/eval.sh
 ```
+Note: We provide example result files, which should be deleted initially.
