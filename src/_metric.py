@@ -191,17 +191,7 @@ def main(evaluation_dir: str) -> None:
     print("Output metrics to", os.path.join(evaluation_dir, "metrics.csv"))
 
 
-def test():
-    eval_dir = "/home/jhkuang/data/cache/dynamsa/eval/test_molinst_denovo"
-    main(eval_dir)
-
-
 if __name__ == "__main__":
-    DEBUG = False
-    if DEBUG:
-        print("Debuging Metric")
-        test()
-    else:
-        import fire
+    import fire
 
-        fire.Fire(main)
+    fire.Fire(main)

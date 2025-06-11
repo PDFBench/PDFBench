@@ -53,9 +53,6 @@ def compute_novelty(
         return novelty
 
     def mmseqs_search():
-        # if not os.path.exists(temp_folder):
-        #     os.makedirs(temp_folder)
-
         # sequence to fasta
         with open(temp_fasta_file, "w") as f:
             fasta_sequence = "\n".join(
@@ -101,11 +98,6 @@ def compute_novelty(
 
         return res
 
-    # Create a unique temporary folder for this run
-    # current = time.strftime("%Y%m%d%H%M%S", time.localtime())
-    # temp_folder = os.path.join(
-    #     temp_folder, os.uname().nodename, f"{current}_{randint(1, 100)}"
-    # )  # temp_folder/node_name/timestamp == temp_node_folder/timestamp
     with tempfile.TemporaryDirectory() as temp_folder:
         temp_fasta_file = os.path.join(temp_folder, "temp.fasta")
         temp_db_file = os.path.join(temp_folder, "temp")
@@ -143,8 +135,6 @@ def _main(
     devices: list,
 ) -> None:
     """
-    _summary_:TODO: Add summary
-
     :param int uid: _description_
     :param mp.Queue queue: _description_
     :param list subset: _description_
@@ -168,7 +158,6 @@ def _main(
                 sequence=mutant,
                 mmseqs_path=mmseqs_path,
                 database_path=database_path,
-                # temp_folder=temp_folder,
             ),
         }
 
@@ -195,11 +184,6 @@ def main(
 
         with open(sequence_file, "r") as f:
             data: list = json.load(f)
-
-        # # create temp foler for node, namely all the subprocesses
-        # temp_node_folder = os.path.join(temp_folder, os.uname().nodename)
-        # if not os.path.exists(temp_node_folder):
-        #     os.makedirs(temp_node_folder)
 
         devices: list = os.environ.get("CUDA_VISIBLE_DEVICES", "").split(",")
 
@@ -234,10 +218,6 @@ def main(
 
         with open(evaluation_file, "w") as f:
             json.dump(results, f, indent=4)  # type: ignore
-
-        # # remove temp folder for node
-        # if os.path.exists(temp_node_folder):
-        #     shutil.rmtree(temp_node_folder)
     else:
         print("Load processed evaluation file")
         with open(evaluation_file, "r") as f:
@@ -251,20 +231,7 @@ def main(
         print(f"mean {metric}: {mean:.2f}")
 
 
-def test():
-    sequence = "MSSSSSGGPPGTVTGTGSGGDGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTETETGTGTGTGTGTGTETETGEGTETEEEEEEEEEEEEEEEEEEEEEEEEEEE"
-    compute_novelty(
-        sequence=sequence,
-        database_path="/home/jhkuang/data/datasets/MMseqs/db/uniprotkb/uniprot_gpu",
-        mmseqs_path="/home/jhkuang/app/mmseqs/bin/mmseqs",
-    )
-
-
 if __name__ == "__main__":
-    DEBUG = False
-    if DEBUG:
-        test()
-    else:
-        import fire
+    import fire
 
-        fire.Fire(main)
+    fire.Fire(main)

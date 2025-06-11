@@ -145,10 +145,10 @@ def _main_evollama_score(
     )
 
     embedding_model = BertModel.from_pretrained(
-        "/home/nwliu/data/pretrain/pubmedbert-base-embeddings"
+        "NeuML/pubmedbert-base-embeddings"
     ).to(f"cuda:{uid}")  # type: ignore
     embedding_tokenizer = BertTokenizer.from_pretrained(
-        "/home/nwliu/data/pretrain/pubmedbert-base-embeddings"
+        "NeuML/pubmedbert-base-embeddings"
     )
     ret = []
     with torch.no_grad():

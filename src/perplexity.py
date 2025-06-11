@@ -66,9 +66,10 @@ def _main(uid: int, queue: mp.Queue, subset: list):
     results: list = [{"sequence": item["response"]} for item in subset]
 
     # region Perplexity besed on ProGPT2
-    model_path = "/home/jhkuang/data/huggingface/hub/ProtGPT2"
-    tokenizer = AutoTokenizer.from_pretrained(model_path)
-    model = AutoModelForCausalLM.from_pretrained(model_path).to(f"cuda:{uid}")
+    tokenizer = AutoTokenizer.from_pretrained("nferruz/ProtGPT2")
+    model = AutoModelForCausalLM.from_pretrained("nferruz/ProtGPT2").to(
+        f"cuda:{uid}"
+    )
     model.eval()
 
     idx = 0
@@ -169,73 +170,7 @@ def main(
         print(f"mean {metric}: {mean}")
 
 
-def test_compute_perplext_progen(seqs):
-    model = AutoModelForCausalLM.from_pretrained(
-        "hugohrban/progen2-base", trust_remote_code=True
-    ).to("cuda:0")
-    model.eval()
-    tokenizer = Tokenizer.from_pretrained("hugohrban/progen2-base")
-    tokenizer.no_padding()
-
-    for seq in seqs:
-        print(
-            f"perplexity[ProGen] of {seq[:15]}: ",
-            compute_perplexity_progen(seq, tokenizer, model),
-        )
-
-
-def test_comput_perplexity_protgpt2(seqs):
-    model_path = "/home/jhkuang/data/huggingface/hub/ProtGPT2"
-    tokenizer = AutoTokenizer.from_pretrained(model_path)
-    model = AutoModelForCausalLM.from_pretrained(model_path).to("cuda:0")
-    model.eval()
-
-    for seq in seqs:
-        print(
-            f"perplexity[ProtGPT2] of {seq[:15]}: ",
-            compute_perplexity_protgpt2(seq, tokenizer, model),
-        )
-
-
-def test():
-    seq01 = (
-        "IKVIDLMCPVVVVVVVVVVVLVTGALLGKGKGKGKGKGKATPKAVKKGKGKGKGKGKGKGKGK"
-        "GKGKGKGKGKSGKGKGKGKGKGKGKGKGKGKGKGKGKGKGKSGKGKGKGKGKGKGKGKSGKGK"
-        "GKGKGKGKGKGKSGKGKGKGKGKGKGKGKGKSGKGKGKGKGKGKGKGKGKSGKGKGKGKGKGK"
-        "GKGKGKGKSGKGKGKGKGKGKGKGKGKGKGKSGKGKGKGKGKGKGKGKGKGKGKGKSGKGKGK"
-        "GKGKGKGKGKSGKGKGKGKGKGKGKGKGKGKGKGKGKGKGKSGKGKGKGKGKGKGKGKSGKGK"
-        "GKGKGKGKGKGKSGKGKGKGKGKGKGKGKGKSGKGKGKGKGKGKGKGKGKSGKGKGKGKGKGK"
-        "GKGKGKGKSGKGKGKGKGKGKGKGKGKGKGKSGKGKGKGKGKGKGKGKGKGKGKGKSGKGKGK"
-        "GKGKGKGKGKSGKGKGKGKGKGKGKGKGKGKGKGKGKGKGKSGKGKGKGKGKGKGKGKSGKGK"
-        "GKGKGKGKGKGKSGKGKGKGKGKGKGKGKGKSGKGKGKGKGKGKGKGKGKSGKGKGKGKGKGK"
-        "GKGKGKGKSGKGKGKGKGKGKGKGKGKGKGKSGKGKGKGKGKGKGKGKGKGKGKGKSGKGKGK"
-        "GKGKGKGKGKGKGKGKGKGKSGKGKGKG"
-    )
-    seq02 = (
-        "MQQDLAGKHILLGLTGGVACYKSAELCRLFIKAGATVQVVMTEAATQFITPVTMQALSGQPV"
-        "YLSQWDARQANNMPHINLGREADAIVLAPASADFIARLVQGRSDELLSLLCLARPLQRVPLL"
-        "VAPAMNREMWAHPATQRNLRQLADDGALVLGVGQGWQACGEAGDGRMLEPAELLEEVVAHFQ"
-        "PKVLLGEHVVVTAGPTFEAMDPIRGITNHSSGKMGFAIARAAREAGARVTLVAGPVHLPTPR"
-        "GVQRVDVASAQQMLQAVQAAVADASVFVATAAVADWRPADPQMHKIKKDGSGQTPVLRFVEN"
-        "PDILHTVAQGERARGRQLFCVGFAAESENLLEHAKAKRLRKGIPLLVGNIGPLTFGQDDNSL"
-        "LLVDEHGARELPRASKLALARELASEIAVRLRPWRG"
-    )
-    seq03 = (
-        "IMLFCITMGGGKGKGKGKGKPVLKGKGKGKGKGKGIKGAVKGKGKGKGKGKGKGKGKGKGKGKGKGKGKG"
-        "KGKGKGKGKGKGKGKGKGKGKGKGKGKEDVGKGKGKGKGKGKGKGKEDVGKGKGKGKGKGKGKGKGKGKG"
-        "KGKGKGKGKGKGKEDVGKGKGKGKGKGKGKGKGKGKEDVGKGKGKGKGKGKGKGKGKGKGKEDVGKGKGK"
-        "GKGKGKGKGKGKGKGKGKGKEDVGKGKGKGKGKGKGKGKGKGKGKGKGKGKGKGKGKGKGKGKGKGK"
-    )
-    test_comput_perplexity_protgpt2([seq01, seq02, seq03])
-    test_compute_perplext_progen([seq01, seq02, seq03])
-
-
 if __name__ == "__main__":
-    DEBUG = False
-    if DEBUG:
-        print("Debuging Perplexity")
-        test()
-    else:
-        import fire
+    import fire
 
-        fire.Fire(main)
+    fire.Fire(main)

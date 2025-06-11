@@ -158,23 +158,7 @@ def main(
         print(f"mean {metric}: {mean:.2f}")
 
 
-def test():
-    sequence = (
-        "MQQDLAGKHILLGLTGGVACYKSAELCRLFIKAGATVQVVMTEAATQFITPVTMQALSGQPV"
-        "YLSQWDARQANNMPHINLDESEEAIVLAPASADFIARLVQGRSDELLSLLCLARPLQRVPLL"
-        "GVQRVDVASAQQMLQAVQAAVADASAAVAAVAAVAAVAADPQMHKIKKDGSGQTPVLRFVEN"
-        "PDILHTVAQGERARGRQLFCVGFAAESENLLEHAKAKRLRKGIPLLVGNIGPLTFGQDDNSL"
-        "LLVDEHGARELPRASKLARG"
-    )
-    print(compute_repetitiveness(sequence))
-
-
 if __name__ == "__main__":
-    DEBUG = False
-    if DEBUG:
-        print("Debuging Repetitiveness")
-        test()
-    else:
-        import fire
+    import fire
 
-        fire.Fire(main)
+    fire.Fire(main)

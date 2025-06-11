@@ -66,9 +66,10 @@ def _main(uid: int, queue: mp.Queue, subset: list):
     results: list = [dict() for _ in range(len(subset))]
 
     # region Bertscore based on ESM-2
-    model_path = "/home/jhkuang/public/old_pretrain/esm2_t33_650M_UR50D"
-    tokenizer = EsmTokenizer.from_pretrained(model_path)
-    model = EsmModel.from_pretrained(model_path).to(f"cuda:{uid}")  # type: ignore
+    tokenizer = EsmTokenizer.from_pretrained("facebook/esm2_t33_650M_UR50D")
+    model = EsmModel.from_pretrained("facebook/esm2_t33_650M_UR50D").to(
+        f"cuda:{uid}"  # type: ignore
+    )
     model.eval()
     idx = 0
     for item in tqdm(
@@ -145,59 +146,7 @@ def main(
         print(f"mean {metric}: {mean:.2f}")
 
 
-def test():
-    seq01 = (
-        "IKVIDLMCPVVVVVVVVVVVLVTGALLGKGKGKGKGKGKATPKAVKKGKGKGKGKGKGKGKGK"
-        "GKGKGKGKGKSGKGKGKGKGKGKGKGKGKGKGKGKGKGKGKSGKGKGKGKGKGKGKGKSGKGK"
-        "GKGKGKGKGKGKSGKGKGKGKGKGKGKGKGKSGKGKGKGKGKGKGKGKGKSGKGKGKGKGKGK"
-        "GKGKGKGKSGKGKGKGKGKGKGKGKGKGKGKSGKGKGKGKGKGKGKGKGKGKGKGKSGKGKGK"
-        "GKGKGKGKGKSGKGKGKGKGKGKGKGKGKGKGKGKGKGKGKSGKGKGKGKGKGKGKGKSGKGK"
-        "GKGKGKGKGKGKSGKGKGKGKGKGKGKGKGKSGKGKGKGKGKGKGKGKGKSGKGKGKGKGKGK"
-        "GKGKGKGKSGKGKGKGKGKGKGKGKGKGKGKSGKGKGKGKGKGKGKGKGKGKGKGKSGKGKGK"
-        "GKGKGKGKGKSGKGKGKGKGKGKGKGKGKGKGKGKGKGKGKSGKGKGKGKGKGKGKGKSGKGK"
-        "GKGKGKGKGKGKSGKGKGKGKGKGKGKGKGKSGKGKGKGKGKGKGKGKGKSGKGKGKGKGKGK"
-        "GKGKGKGKSGKGKGKGKGKGKGKGKGKGKGKSGKGKGKGKGKGKGKGKGKGKGKGKSGKGKGK"
-        "GKGKGKGKGKGKGKGKGKGKSGKGKGKG"
-    )
-    seq02 = (
-        "MQQDLAGKHILLGLTGGVACYKSAELCRLFIKAGATVQVVMTEAATQFITPVTMQALSGQPV"
-        "YLSQWDARQANNMPHINLGREADAIVLAPASADFIARLVQGRSDELLSLLCLARPLQRVPLL"
-        "VAPAMNREMWAHPATQRNLRQLADDGALVLGVGQGWQACGEAGDGRMLEPAELLEEVVAHFQ"
-        "PKVLLGEHVVVTAGPTFEAMDPIRGITNHSSGKMGFAIARAAREAGARVTLVAGPVHLPTPR"
-        "GVQRVDVASAQQMLQAVQAAVADASVFVATAAVADWRPADPQMHKIKKDGSGQTPVLRFVEN"
-        "PDILHTVAQGERARGRQLFCVGFAAESENLLEHAKAKRLRKGIPLLVGNIGPLTFGQDDNSL"
-        "LLVDEHGARELPRASKLALARELASEIAVRLRPWRG"
-    )
-    seq03 = (
-        "IMLFCITMGGGKGKGKGKGKPVLKGKGKGKGKGKGIKGAVKGKGKGKGKGKGKGKGKGKGKGKGKGKGKG"
-        "KGKGKGKGKGKGKGKGKGKGKGKGKGKEDVGKGKGKGKGKGKGKGKEDVGKGKGKGKGKGKGKGKGKGKG"
-        "KGKGKGKGKGKGKEDVGKGKGKGKGKGKGKGKGKGKEDVGKGKGKGKGKGKGKGKGKGKGKEDVGKGKGK"
-        "GKGKGKGKGKGKGKGKGKGKEDVGKGKGKGKGKGKGKGKGKGKGKGKGKGKGKGKGKGKGKGKGKGK"
-    )
-    model_path = "/home/jhkuang/public/old_pretrain/esm2_t33_650M_UR50D"
-    tokenizer = EsmTokenizer.from_pretrained(model_path)
-    model = EsmModel.from_pretrained(model_path).to("cuda:4")  # type: ignore
-    model.eval()
-
-    print(
-        "perplexity: ",
-        compute_bertscore(
-            seq01,
-            seq02,
-            model,
-            tokenizer,
-        ),
-    )
-    print("perplexity: ", compute_bertscore(seq02, seq03, model, tokenizer))
-    print("perplexity: ", compute_bertscore(seq03, seq01, model, tokenizer))
-
-
 if __name__ == "__main__":
-    DEBUG = False
-    if DEBUG:
-        print("Debuging Bert-Like Score")
-        test()
-    else:
-        import fire
+    import fire
 
-        fire.Fire(main)
+    fire.Fire(main)

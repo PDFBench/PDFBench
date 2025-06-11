@@ -297,38 +297,7 @@ def main(
         print(f"mean {metric}: {mean:.4f}")
 
 
-def test():
-    device = 3
-    print(device)
-    model_path = "/home/nwliu/data/pretrain/ProTrek_650M_UniRef50"
-    config = {
-        "protein_config": os.path.join(model_path, "esm2_t33_650M_UR50D"),
-        "text_config": os.path.join(
-            model_path,
-            "BiomedNLP-PubMedBERT-base-uncased-abstract-fulltext",
-        ),
-        "structure_config": os.path.join(model_path, "foldseek_t30_150M"),
-        "load_protein_pretrained": False,
-        "load_text_pretrained": False,
-        "from_checkpoint": os.path.join(model_path, "ProTrek_650M_UniRef50.pt"),
-    }
-    model = ProTrekTrimodalModel(**config).eval().to(f"cuda:{device}")
-
-    sequence = "MVQSPMISCPLKQTNEIDWIQPLKDYIRQSYGEDPERYSQECATLNRLRQDMRGAGKDSATGRDLLYRYYGQLELLDLRFPVDENHIKISFTWYDAFTHKPTSQYSLAFEKASIIFNISAVLSCHAANQNRADDIGLKTAYHNFQASAGMFTYINENFLHAPSTDLNRETVKTLINITLAQGQEVFLEKQIMDHKKAGFLAKLASQASYLYAQAIEGTQEHAKGIFDKSWVTLLQVKSAHMGSVASYYQALADGESGSHGVAVARLQLAEKHSTSALSWAKSLPSSISPNTNLTSEAGPSLVDIVKFHLANVQSQLATFVKDNDFIYHQPVPSEAGLSAVSKLPAAKAIPVSELYQGQDIQRIIGPDIFQKLVPMSVTETASLYDEEKAKLIRAETEKVETADGEMAASLDYFKLPGSLNILKGGMDQEVMVDEEFQRWCQELAGHDSFAKAFDTLQDRKSEVLATLDQCAKQLDLEESVCEKMRSKYGADWSQQPSSRLNMTLRNDIRTYRDTVHEASASDAQLSATLRQYESDFDEMRSAGETDEADVLFQRAMIKAGSKQGKTKNGVTSPYSATEGSLLDDVYDDGVPSVAEQIARVESILKKLNLVKRERTQVLKDLKEKVRNDDISNVLILNKKSITGQESQLFEAELEKFHPHQMRIVQANHKQTALMKELTKTYGDLLQDKRVRAEQSKYESITRQRNSVMARYKKIYDSFNNLGSGIKQAQTFYAEMTETVDSLKKNVDTFINNRRSEGAQLLGQIEREK"
-    instruction = "Construct a protein sequence with the desired structural and functional characteristics. 1. Target a Basic and acidic residues, Polar residues compositional bias in the protein's composition for improved properties.2. The protein must contain a signal peptide for proper functionality.3. The protein contains novel BRO1 domains that confer a unique function or activity.4. The protein design should be able to enhance the efficiency of protein transport. The designed protein sequence is "
-    seq_embed = model.get_protein_repr([sequence]).cpu()
-    text_embed = model.get_text_repr([instruction]).cpu()
-    print(f"seq_embed: {seq_embed.shape}, text_embed: {text_embed.shape}")
-    pos_score = F.cosine_similarity(text_embed, seq_embed).item()
-    print(f"pos_score: {pos_score}")
-
-
 if __name__ == "__main__":
-    DEBUG = False
-    if DEBUG:
-        print("Debuging Retrieval Accuracy")
-        test()
-    else:
-        import fire
+    import fire
 
-        fire.Fire(main)
+    fire.Fire(main)
