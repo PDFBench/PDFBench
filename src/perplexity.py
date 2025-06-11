@@ -95,7 +95,7 @@ def _main(uid: int, queue: mp.Queue, subset: list):
     # region Perplexity besed on ProGen
     model = AutoModelForCausalLM.from_pretrained(
         "hugohrban/progen2-base", trust_remote_code=True
-    ).to("cuda:0")
+    ).to(f"cuda:{uid}")
     model.eval()
     tokenizer = Tokenizer.from_pretrained("hugohrban/progen2-base")
     tokenizer.no_padding()

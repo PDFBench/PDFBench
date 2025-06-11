@@ -115,3 +115,16 @@ We Provide two examples for single and batch evaluation. You may edit your prepa
 zsh scripts/eval.sh
 ```
 Note: We provide example result files, which should be deleted initially.
+
+### Cite this work
+```bibtex
+@misc{kuang2025pdfbenchbenchmarknovoprotein,
+      title={PDFBench: A Benchmark for De novo Protein Design from Function}, 
+      author={Jiahao Kuang and Nuowei Liu and Changzhi Sun and Tao Ji and Yuanbin Wu},
+      year={2025},
+      eprint={2505.20346},
+      archivePrefix={arXiv},
+      primaryClass={cs.LG},
+      url={https://arxiv.org/abs/2505.20346}, 
+}
+```
