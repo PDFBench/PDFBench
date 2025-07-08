@@ -3,8 +3,12 @@ The paper can be viewed on the homepage: https://pdfbench.github.io/
 
 ### 1. Environment
 ```shell
-conda create -n PDF --file requirements.txt
+conda create -n PDF python=3.9
 conda activate PDF
+
+pip install torch==2.1.2 torchvision==0.16.2 torchaudio==2.1.2 --index-url https://download.pytorch.org/whl/cu118
+conda install -c conda-forge -c bioconda mmseqs2
+pip install -r requirements.txt
 ```
 
 ### 2. Preparation
