@@ -1,0 +1,32 @@
+evaluation:
+  input_path:
+  mode:
+  metrics:
+  num_devices:
+  num_workers:
+  output_path:
+
+alignment:
+  protrek:
+  evollama:
+  llama:
+  interpro_scan_ex:
+  workers_per_interpro_scan:
+
+others:
+  mmseqs_ex:
+  mmseqs_db:
+
+seqeunce:
+  ppl:
+
+structure:
+  esm_fold:
+  pdb_cache_dir:
+  tm_score_ex:
+  workers_per_tm_score:
+  
+
+
+  
+

@@ -1,6 +1,6 @@
 # EvoLlama and ProTrek Folder
-src/EvoLlama/* 
-src/ProTrek/*
+src/EvoLlama/
+src/ProTrek/
 
 # test
 test_*
@@ -12,7 +12,10 @@ temp/
 *.pdb
 
 # pycache files
+**/__pycache__
 *.cpython-39.pyc
 
 # cak files
 *.back
+
+
