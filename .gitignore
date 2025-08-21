@@ -169,7 +169,7 @@ cython_debug/
 test_*
 
 # Temporary
-temp/
+**/temp/
 
 # .pdb files in Foldability
 *.pdb
@@ -178,7 +178,7 @@ temp/
 **/__pycache__/
 *.pyc
 
-# cak files
+# backup files
 *.back
 
 
