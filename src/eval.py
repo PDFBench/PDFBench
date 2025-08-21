@@ -13,7 +13,7 @@ logger = logging.get_logger(__name__)
 
 def get_eval_args() -> EvaluationArgs:
     args = EvaluationArgs.parse()
-    args.validate()
+    args.init()
     logging.set_global_logger()
     logger.info_rank0(args.to_json())
     return args
@@ -22,7 +22,7 @@ def get_eval_args() -> EvaluationArgs:
 def evaluate(config: EvaluationArgs) -> None:
     concerns = []
     if config.repeat.run:
-        concerns.append(RepetitivenessMetric)
+        concerns.append(RepetitivenessMetric(config))
     # TODO: remain metrics
 
     metrics: MetricList = MetricList(metrics=concerns, config=config)

@@ -21,15 +21,17 @@ def multiprocess_evaluate(
     """
     queue: mp.Queue = mp.Queue()
     procs: list = []
-    for i in range(num_workers):
+    for pid in range(num_workers):
         piece: int = len(dataset) // num_workers
-        beg_idx: int = i * piece
-        end_idx: int = (i + 1) * piece if i != num_workers - 1 else len(dataset)
+        beg_idx: int = pid * piece
+        end_idx: int = (
+            (pid + 1) * piece if pid != num_workers - 1 else len(dataset)
+        )
         subset = dataset[beg_idx:end_idx]
 
         proc = mp.Process(
             target=eval_worker,
-            args=(i, queue, subset),
+            args=(queue, num_workers - pid - 1, subset),  # reverse the pid
             kwargs=kwargs,
         )
         proc.start()

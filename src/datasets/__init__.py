@@ -1,5 +1,4 @@
 from enum import Enum
-
 from .dataset import BaseDataset
 from .description.swissmolinst import SwissMolinstDataset
 from .keyword.ecnumber import ECNumberDataset

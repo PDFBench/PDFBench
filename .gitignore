@@ -181,4 +181,5 @@ test_*
 # backup files
 *.back
 
-
+# VSCode
+**/.vscode/

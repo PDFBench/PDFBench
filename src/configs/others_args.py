@@ -1,6 +1,5 @@
 from dataclasses import dataclass
 from enum import Enum, auto
-from typing import Optional
 
 
 class Novelty(Enum):
@@ -10,10 +9,19 @@ class Novelty(Enum):
 
 @dataclass
 class NoveltyArguments:
-    mmseqs_ex_path: Optional[str]
-    novelties: Optional[tuple[Novelty, ...]] = (Novelty.Sequence,)
+    mmseqs_ex_path: str | None = None
+    novelties: tuple[Novelty, ...] = (Novelty.Sequence,)
     run: bool = True
     name: str = "novelty"
+
+    def init(self):
+        if not self.run:
+            return
+
+        if not self.novelties:
+            raise ValueError(
+                "At least one novelty (`Sequence`, `Structure`) must be selected for computing Novelty"
+            )
 
 
 class Diversity(Enum):
@@ -23,11 +31,20 @@ class Diversity(Enum):
 
 @dataclass
 class DiversityArguments:
-    mmseqs_ex_path: Optional[str]
-    tm_score_ex_path: Optional[str]
-    diversities: Optional[tuple[Diversity, ...]] = (
+    mmseqs_ex_path: str | None = None
+    tm_score_ex_path: str | None = None
+    diversities: tuple[Diversity, ...] = (
         Diversity.Sequence,
         Diversity.Structure,
     )
     run: bool = True
     name: str = "diversity"
+
+    def init(self):
+        if not self.run:
+            return
+
+        if not self.diversities:
+            raise ValueError(
+                "At least one diversity (`Sequence`, `Structure`) must be selected for computing Diversity"
+            )

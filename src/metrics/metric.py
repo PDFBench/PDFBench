@@ -95,8 +95,7 @@ class MetricList:
         return self._output_dir
 
     def evaluate(self, dataset: BaseDataset):
-        cav_name = ""
         results: list[EvaluationOutput] = []
         for metric in self.metrics:
-            results.append(metric.evaluate(dataset))
+            results.append(metric.evaluate(dataset=dataset))
         return results

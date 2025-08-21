@@ -78,21 +78,20 @@ def compute_repeatN(sequence: str, n: int):
 
 
 def repeat_evaluate_worker(
-    queue: mp.Queue, uid: int, subset: list, **kwargs
+    queue: mp.Queue, pid: int, subset: list, **kwargs
 ) -> None:
-    design_batch_size = kwargs.pop("design_batch_size", 1)
-    compute_methods = kwargs.pop("compute_methods")
-    verbose = kwargs.pop("verbose", False)
+    design_batch_size = kwargs.get("design_batch_size")
+    verbose = kwargs.get("verbose", False)
+    compute_methods = kwargs.get("compute_methods")
+    repn = kwargs.get("RepN")
 
-    if verbose:
-        items = tqdm(
-            subset,
-            desc=f"Process {uid} - Repetitiveness",
-            position=uid + 1,
-            ncols=100,
-        )
-    else:
-        items = subset
+    items = tqdm(
+        subset,
+        desc="Repetitiveness",
+        position=pid + 1,
+        ncols=100,
+        disable=not verbose and pid != 0,
+    )
 
     results: list = [dict() for _ in range(len(subset))]
     for idx, item in enumerate(items):
@@ -121,6 +120,7 @@ class RepetitivenessMetric(BaseMetric):
         super().__init__(config)
         self.RepN = config.repeat.RepN
         self.compute_methods = config.repeat.compute_methods
+        self.name = config.repeat.name
 
     @property
     def metrics(self) -> list[str]:

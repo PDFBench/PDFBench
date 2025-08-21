@@ -35,16 +35,8 @@ class BaseDataset(Dataset, ABC):
                 assert isinstance(self.data, list), "Results must be a list"
                 assert len(self.data) > 0, "Results must not be empty"
                 assert self.support_keys.issubset(self.data[0].keys()), (
-                    "Results must contain keys: `instruction`, `reference`"
+                    f"Results must contain keys: {self.support_keys}"
                 )
-                if design_batch_size == 1:
-                    assert "response" in self.data[0].keys(), (
-                        "Results must contain `response`(single mode)"
-                    )
-                else:
-                    assert "response#1" in self.data[0].keys(), (
-                        "Results must contain `response#N`(batch mode)"
-                    )
             except AssertionError as e:
                 raise RuntimeError(
                     "Error in JSON file, please check the above error message and official tutorial in ?"  # TODO: add link
@@ -52,7 +44,7 @@ class BaseDataset(Dataset, ABC):
 
     @property
     def support_keys(self):
-        return {"instruction", "reference", "response"}.union(
+        return {"instruction", "reference"}.union(
             {f"response#{b}" for b in range(1, self.design_batch_size + 1)}
         )
 
