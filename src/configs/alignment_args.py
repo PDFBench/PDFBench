@@ -8,7 +8,7 @@ class ProTrekScoreArguments:
     run: bool = True
     name: str = "protrek_score"
 
-    def init(self):
+    def __post_init__(self):
         if not self.run:
             return
 
@@ -21,7 +21,7 @@ class EvoLlamaScoreArguments:
     run: bool = True
     name: str = "evollama_score"
 
-    def init(self):
+    def __post_init__(self):
         if not self.run:
             return
 
@@ -33,7 +33,7 @@ class KeywordRecoveryArguments:
     run: bool = True
     name: str = "keyword_recovery"
 
-    def init(self):
+    def __post_init__(self):
         if not self.run:
             return
 
@@ -63,7 +63,7 @@ class RetrievalAccuracyArguments:
     run: bool = True
     name: str = "retrieval_accuracy"
 
-    def init(self):
+    def __post_init__(self):
         if not self.run:
             return
 

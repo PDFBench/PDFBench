@@ -1,5 +1,5 @@
 import json
-from dataclasses import dataclass, fields
+from dataclasses import dataclass
 from typing import Any, Optional
 
 import simple_parsing
@@ -10,7 +10,7 @@ from .alignment_args import (
     ProTrekScoreArguments,
     RetrievalAccuracyArguments,
 )
-from .basic_args import BasicArguments
+from .basic_args import BasicArguments, LaunchArguments
 from .others_args import DiversityArguments, NoveltyArguments
 from .sequence_args import (
     BertScoreArguments,
@@ -28,7 +28,6 @@ class Args(simple_parsing.Serializable):
     @classmethod
     def parse(cls, args: Optional[dict[str, Any]] = None):
         assert args is None  # TODO: Load arguments from dict
-        # simple_parsing.helpers.serialization.from_dict()
         return simple_parsing.parse(
             config_class=cls,
             conflict_resolution=simple_parsing.ConflictResolution.AUTO,
@@ -44,6 +43,7 @@ class Args(simple_parsing.Serializable):
 @dataclass
 class EvaluationArgs(Args):
     basic: BasicArguments
+    launch: LaunchArguments
     # Sequence
     repeat: RepetitivenessArguments
     bert_score: BertScoreArguments
@@ -61,14 +61,8 @@ class EvaluationArgs(Args):
     novelty: NoveltyArguments
     diversity: DiversityArguments
 
-    def init(
-        self,
-    ):
+    def __post_init__(self):
         """Validation and Initialization of Arguments"""
-        for field in fields(self):
-            sub_args = getattr(self, field.name)
-            sub_args.init()
-
         # mmseqs
         mmseqs_ex_path = (
             self.novelty.mmseqs_ex_path

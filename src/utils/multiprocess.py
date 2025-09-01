@@ -1,14 +1,27 @@
 import multiprocessing as mp
+import subprocess
 from typing import Any, Callable
 
+from accelerate import Accelerator
+
 from src.datasets import BaseDataset
+
+
+class AcceleratorManager:
+    _accelerator: Accelerator | None = None
+
+    @classmethod
+    def get_accelerator(cls) -> Accelerator:
+        if cls._accelerator is None:
+            cls._accelerator = Accelerator()
+        return cls._accelerator
 
 
 def multiprocess_evaluate(
     dataset: BaseDataset | list,
     eval_worker: Callable,
     num_workers: int,
-    **kwargs,
+    kwargs,
 ) -> list[Any]:
     """
     _summary_
@@ -43,3 +56,7 @@ def multiprocess_evaluate(
     for proc in procs:
         proc.join()
     return results
+
+
+def lauch(metric_name: str):
+    process = subprocess.run(("accelerate run -m {module}").format())

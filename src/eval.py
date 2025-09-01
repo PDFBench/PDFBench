@@ -1,7 +1,13 @@
 import os
 
-from src.datasets.dataset import BaseDataset
-from src.metrics.sequence.repetitiveness import RepetitivenessMetric
+from src.metrics import (
+    BertScoreMetric,
+    FoldabilityMetric,
+    IdentityMetric,
+    PerplexityMetric,
+    RepetitivenessMetric,
+)
+from src.metrics.metric import EvaluationOutput
 
 from .configs.parser import EvaluationArgs
 from .metrics import MetricList
@@ -13,7 +19,6 @@ logger = logging.get_logger(__name__)
 
 def get_eval_args() -> EvaluationArgs:
     args = EvaluationArgs.parse()
-    args.init()
     logging.set_global_logger()
     logger.info_rank0(args.to_json())
     return args
@@ -23,14 +28,18 @@ def evaluate(config: EvaluationArgs) -> None:
     concerns = []
     if config.repeat.run:
         concerns.append(RepetitivenessMetric(config))
+    if config.bert_score.run:
+        concerns.append(BertScoreMetric(config))
+    if config.perplexity.run:
+        concerns.append(PerplexityMetric(config))
+    if config.identity.run:
+        concerns.append(IdentityMetric(config))
+    if config.foldability.run:
+        concerns.append(FoldabilityMetric(config))
     # TODO: remain metrics
 
     metrics: MetricList = MetricList(metrics=concerns, config=config)
-    dataset: BaseDataset = config.basic.dataset_type.value(
-        path=config.basic.input_path,
-        design_batch_size=config.basic.design_batch_size,
-    )
-    results = metrics.evaluate(dataset=dataset)
+    results: list[EvaluationOutput] = metrics.evaluate()
 
     if config.basic.visualize:
         to_csv(

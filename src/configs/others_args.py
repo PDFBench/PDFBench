@@ -14,7 +14,7 @@ class NoveltyArguments:
     run: bool = True
     name: str = "novelty"
 
-    def init(self):
+    def __post_init__(self):
         if not self.run:
             return
 
@@ -40,7 +40,7 @@ class DiversityArguments:
     run: bool = True
     name: str = "diversity"
 
-    def init(self):
+    def __post_init__(self):
         if not self.run:
             return
 

@@ -4,7 +4,7 @@ from tqdm.auto import tqdm
 
 from src.configs.sequence_args import Repeat_Algorithm
 from src.datasets import BaseDataset
-from src.metrics import BaseMetric, EvaluationOutput
+from src.metrics import BaseMetric
 from src.utils.multiprocess import multiprocess_evaluate
 
 
@@ -74,25 +74,33 @@ def compute_repeatN(sequence: str, n: int):
     for i in range(len(sequence) - n + 1):
         indeps.add(sequence[i : i + n])
 
-    return max(0.0, 1 - len(indeps) / (len(sequence) - n))
+    return max(0.0, 1 - len(indeps) / (len(sequence) - n + 1))
 
 
 def repeat_evaluate_worker(
     queue: mp.Queue, pid: int, subset: list, **kwargs
 ) -> None:
     design_batch_size = kwargs.get("design_batch_size")
-    verbose = kwargs.get("verbose", False)
+    verbose = kwargs.get("verbose")
     compute_methods = kwargs.get("compute_methods")
     repn = kwargs.get("RepN")
+    if not (
+        design_batch_size is not None
+        and verbose is not None
+        and compute_methods is not None
+        and repn is not None
+    ):
+        raise ValueError(
+            f"Invalid kwargs: {design_batch_size}, {verbose}, {compute_methods}, {repn}"
+        )
 
     items = tqdm(
         subset,
         desc="Repetitiveness",
         position=pid + 1,
         ncols=100,
-        disable=not verbose and pid != 0,
+        disable=not verbose or pid != 0,
     )
-
     results: list = [dict() for _ in range(len(subset))]
     for idx, item in enumerate(items):
         res = {
@@ -102,14 +110,16 @@ def repeat_evaluate_worker(
         for b in range(1, design_batch_size + 1):
             response = item[f"response#{b}"]
 
-            res.update(
-                {
-                    f"response#{b}": response,
-                    **{f"rep2#{b}": compute_repeatN(response, 2)},
-                    f"repeat#{b}": compute_repeat(response),
-                }
-            )
-            res.update
+            res.update({f"response#{b}": response})
+            if Repeat_Algorithm.Repeat.name in compute_methods:
+                res.update({f"repeat#{b}": compute_repeat(sequence=response)})
+            if Repeat_Algorithm.RepN.name in compute_methods:
+                res.update(
+                    {
+                        f"rep{n}#{b}": compute_repeatN(sequence=response, n=n)
+                        for n in repn
+                    }
+                )
         results[idx].update(res)
 
     queue.put(results)
@@ -120,22 +130,22 @@ class RepetitivenessMetric(BaseMetric):
         super().__init__(config)
         self.RepN = config.repeat.RepN
         self.compute_methods = config.repeat.compute_methods
-        self.name = config.repeat.name
+        self._name = config.repeat.name
 
     @property
     def metrics(self) -> list[str]:
         _metrics = []
-        if Repeat_Algorithm.RepN in self.compute_methods:
+        if Repeat_Algorithm.RepN.name in self.compute_methods:
             _metrics.extend([f"rep_{n}" for n in self.RepN])
-        if Repeat_Algorithm.Repeat in self.compute_methods:
+        if Repeat_Algorithm.Repeat.name in self.compute_methods:
             _metrics.append("repeat")
         return _metrics
 
-    def evaluate(
+    def _evaluate(
         self,
         dataset: BaseDataset,
-    ) -> EvaluationOutput | None:
-        results = multiprocess_evaluate(
+    ) -> list[dict]:
+        return multiprocess_evaluate(
             dataset=dataset,
             eval_worker=repeat_evaluate_worker,
             num_workers=min(self.num_cpu // 4, 8),
@@ -145,9 +155,4 @@ class RepetitivenessMetric(BaseMetric):
                 "compute_methods": self.compute_methods,
                 "RepN": self.RepN,
             },
-        )
-        return EvaluationOutput(
-            results=results,
-            metrics=self.metrics,
-            design_batch_size=self.design_batch_size,
         )

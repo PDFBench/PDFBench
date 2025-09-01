@@ -17,7 +17,7 @@ class RepetitivenessArguments:
     )
     RepN: tuple[int, ...] = (2, 5)
 
-    def init(self):
+    def __post_init__(self):
         if not self.run:
             return
 
@@ -55,12 +55,13 @@ class PerplexityArguments:
         PerplexityModel.ProteinGLM,
         PerplexityModel.ESMC,
     )
+    batch_size: int = 64
     progen2_name_or_path: str = "hugohrban/progen2-base"
     protgpt2_name_or_path: str = "nferruz/ProtGPT2"
     rita_name_or_path: str = "lightonai/RITA_xl"
     proteinglm_name_or_path: str = "biomap-research/proteinglm-3b-clm"
 
-    def init(self):
+    def __post_init__(self):
         if not self.run:
             return
 
@@ -82,8 +83,9 @@ class BertScoreArguments:
     name: str = "bert_score"
     compute_models: tuple[BertModel, ...] = (BertModel.ESM2,)
     esm2_name_or_path: str = "facebook/esm2_t33_650M_UR50D"
+    esm2_batch_size: int = 64
 
-    def init(self):
+    def __post_init__(self):
         if not self.run:
             return
 
@@ -99,8 +101,9 @@ class BertScoreArguments:
 class IdentityArguments:
     run: bool = True
     name: str = "identity"
+    thread_per_mmseqs: int = 6
     mmseqs_ex_path: str | None = None
 
-    def init(self):
+    def __post_init__(self):
         if not self.run:
             return
