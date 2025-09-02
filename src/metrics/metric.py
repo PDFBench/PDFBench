@@ -1,12 +1,16 @@
 import json
 import os
+import shlex
 import subprocess
 from abc import ABC, abstractmethod
 from copy import deepcopy
 
 import accelerate
+import torch
+from torch.utils.data import DataLoader
 
 from src.configs.parser import EvaluationArgs
+from src.datasets import BaseDataset
 from src.utils import logging
 
 
@@ -47,10 +51,12 @@ class BaseMetric(ABC):
         self._log_dir = config.basic.log_dir
         self._visualize = config.basic.visualize
         self._name: str
+        self._speed_up: bool
         self.logger = logging.get_logger(
             f"{self.__class__.__module__}.{self.__class__.__name__}"
         )
 
+    # region property
     @property
     def config(self) -> EvaluationArgs:
         return self._config
@@ -97,6 +103,14 @@ class BaseMetric(ABC):
     def output_path(self) -> str:
         return os.path.join(self.output_dir, f"{self.name}.json")
 
+    @property
+    def speed_up(self) -> bool:
+        if self._speed_up is None:
+            raise ValueError("Speed up of this Metric has not been set.")
+        return self._speed_up
+
+    # endregion
+
     def evaluate(self) -> EvaluationOutput:
         self.logger.info_rank0(f"Evaluating {self.name}")
         if os.path.exists(self.output_path):
@@ -107,29 +121,43 @@ class BaseMetric(ABC):
             self.logger.info_rank0(
                 f"Lauching evaluation subprocess for {self.name}"
             )
-            self.logger.info_rank0(
-                (
-                    "accelerate launch --multi_gpu --num_processes "
-                    "{num_processes} -m src.launch --config_path {config_path}"
-                    " --launch.metric_cls {metric_cls}"
-                ).format(
-                    num_processes=self.config.basic.num_gpu,
-                    config_path=self.config.basic.config_path,
-                    metric_cls=self.__class__.__name__,
-                )
-            )
+
+            # fmt: off
+            cmd = []
+            if self.speed_up:
+                cmd.extend([
+                    "accelerate", "launch",
+                    "--multi_gpu",
+                    "--num_processes", str(self.config.basic.num_gpu)
+                ])
+            else:
+                cmd.append("python")
+
+            cmd.extend([
+                "-m", "src.launch",
+                "--config_path", self.config.basic.config_path,
+                "--lauch.metric_cls", self.__class__.__name__
+            ])
+            # fmt: on
+
+            if self.speed_up:
+                handler = (
+                    "accelerate launch"
+                    " --multi_gpu --num_processes {num_processes}"
+                ).format(num_processes=self.config.basic.num_gpu)
+            else:
+                handler = "python"
+
             subprocess.run(
-                args=(
-                    "accelerate launch --multi_gpu --num_processes "
-                    "{num_processes} -m src.lauch --config_path {config_path}"
-                    " --lauch.metric_cls {metric_cls}"
-                )
-                .format(
-                    num_processes=self.config.basic.num_gpu,
-                    config_path=self.config.basic.config_path,
-                    metric_cls=self.__class__.__name__,
-                )
-                .split(),
+                args=shlex.split(
+                    (
+                        handler
+                        + " -m src.launch --config_path {config_path} --launch.metric_cls {metric_cls}"
+                    ).format(
+                        config_path=self.config.basic.config_path,
+                        metric_cls=self.__class__.__name__,
+                    )
+                ),
                 env=deepcopy(os.environ),
                 check=True,
             )
@@ -172,16 +200,60 @@ class BaseEvaluator(ABC):
     def __init__(self, config: EvaluationArgs) -> None:
         super().__init__()
         self._config = config
+        self._num_gpu = config.basic.num_gpu
+        self._num_cpu = config.basic.num_cpu
+        self._design_batch_size = config.basic.design_batch_size
+        self._output_dir = config.basic.output_dir
+        self._name: str
+        self.logger = logging.get_logger(
+            f"{self.__class__.__module__}.{self.__class__.__name__}"
+        )
         self._accelerator = accelerate.Accelerator()
-        self._data
+        self._dataset: BaseDataset = config.basic.dataset_type.value(
+            path=config.basic.input_path,
+            design_batch_size=config.basic.design_batch_size,
+        )
+        self._dataloader: DataLoader
 
     @property
     def config(self) -> EvaluationArgs:
         return self._config
 
     @property
+    def name(self) -> str:
+        return self._name
+
+    @property
+    def output_dir(self) -> str:
+        return self._output_dir
+
+    @property
+    def output_path(self) -> str:
+        return os.path.join(self.output_dir, f"{self.name}.json")
+
+    @property
+    def design_batch_size(self) -> int:
+        return self._design_batch_size
+
+    @property
+    def num_cpu(self) -> int:
+        return self._num_cpu
+
+    @property
+    def num_gpu(self) -> int:
+        return self._num_gpu
+
+    @property
     def accelerator(self) -> accelerate.Accelerator:
         return self._accelerator
 
+    @property
+    def dataset(self) -> BaseDataset:
+        return self._dataset
+
     @abstractmethod
     def execute(self) -> None: ...
+
+    def __del__(self) -> None:
+        torch.cuda.empty_cache()
+        self.accelerator.end_training()

@@ -10,7 +10,8 @@ from .alignment_args import (
     ProTrekScoreArguments,
     RetrievalAccuracyArguments,
 )
-from .basic_args import BasicArguments, LaunchArguments
+from .basic_args import BasicArguments
+from .launch_args import LaunchArguments
 from .others_args import DiversityArguments, NoveltyArguments
 from .sequence_args import (
     BertScoreArguments,

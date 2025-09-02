@@ -7,9 +7,8 @@ from src.metrics import (
     PerplexityMetric,
     RepetitivenessMetric,
 )
-from src.metrics.metric import EvaluationOutput
 
-from .configs.parser import EvaluationArgs
+from .configs import EvaluationArgs
 from .metrics import MetricList
 from .utils import logging
 from .utils.visualization import to_csv
@@ -19,6 +18,7 @@ logger = logging.get_logger(__name__)
 
 def get_eval_args() -> EvaluationArgs:
     args = EvaluationArgs.parse()
+    assert args.launch.metric_cls is None, "--lauch.metric_cls must be None"
     logging.set_global_logger()
     logger.info_rank0(args.to_json())
     return args
@@ -39,7 +39,7 @@ def evaluate(config: EvaluationArgs) -> None:
     # TODO: remain metrics
 
     metrics: MetricList = MetricList(metrics=concerns, config=config)
-    results: list[EvaluationOutput] = metrics.evaluate()
+    results = metrics.evaluate()
 
     if config.basic.visualize:
         to_csv(

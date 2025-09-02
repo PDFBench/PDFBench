@@ -46,8 +46,3 @@ class BasicArguments:
         parser.add_argument("--config_path", required=True)
         args, _ = parser.parse_known_args()
         self.config_path = args.config_path
-
-
-@dataclass
-class LaunchArguments:
-    metric_cls: str | None = None
