@@ -17,6 +17,7 @@ class BasicArguments:
     visual_name: str = "results.csv"
     num_gpu: int = -1
     num_cpu: int = -1
+    speed_up: bool = False
 
     def __post_init__(self):
         if self.num_gpu == -1:
@@ -41,7 +42,10 @@ class BasicArguments:
                 "verbose and visualize cannot both be False, "
                 "otherwise the results will be ignored"
             )
-
+        if self.speed_up and self.num_gpu <= 1:
+            raise ValueError(
+                "speed_up(Accelerate) can only be True when num_gpu > 1"
+            )
         parser = argparse.ArgumentParser()
         parser.add_argument("--config_path", required=True)
         args, _ = parser.parse_known_args()

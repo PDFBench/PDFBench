@@ -3,8 +3,7 @@ import multiprocessing as mp
 from tqdm.auto import tqdm
 
 from src.configs.sequence_args import Repeat_Algorithm
-from src.datasets import BaseDataset
-from src.metrics import BaseMetric
+from src.metrics import BaseEvaluator, BaseMetric
 from src.utils.multiprocess import multiprocess_evaluate
 
 
@@ -81,25 +80,25 @@ def repeat_evaluate_worker(
     queue: mp.Queue, pid: int, subset: list, **kwargs
 ) -> None:
     design_batch_size = kwargs.get("design_batch_size")
-    verbose = kwargs.get("verbose")
     compute_methods = kwargs.get("compute_methods")
     repn = kwargs.get("RepN")
     if not (
         design_batch_size is not None
-        and verbose is not None
         and compute_methods is not None
         and repn is not None
     ):
         raise ValueError(
-            f"Invalid kwargs: {design_batch_size}, {verbose}, {compute_methods}, {repn}"
+            "Invalid kwargs: \n"
+            f"design_batch_size: {design_batch_size}\n"
+            f"compute_methods: {compute_methods}\n"
+            f"repn: {repn}"
         )
-
     items = tqdm(
         subset,
         desc="Repetitiveness",
         position=pid + 1,
         ncols=100,
-        disable=not verbose or pid != 0,
+        disable=pid != 0,
     )
     results: list = [dict() for _ in range(len(subset))]
     for idx, item in enumerate(items):
@@ -122,7 +121,7 @@ def repeat_evaluate_worker(
                 )
         results[idx].update(res)
 
-    queue.put(results)
+    queue.put((pid, results))
 
 
 class RepetitivenessMetric(BaseMetric):
@@ -141,18 +140,26 @@ class RepetitivenessMetric(BaseMetric):
             _metrics.append("repeat")
         return _metrics
 
-    def _evaluate(
-        self,
-        dataset: BaseDataset,
-    ) -> list[dict]:
-        return multiprocess_evaluate(
-            dataset=dataset,
+
+class RepetitivenessEvaluator(BaseEvaluator):
+    def __init__(self, config):
+        super().__init__(config)
+        self.RepN = config.repeat.RepN
+        self.compute_methods = config.repeat.compute_methods
+        self._name = config.repeat.name
+
+    def _excete_manual_multiprocess(self) -> None:
+        results = multiprocess_evaluate(
+            dataset=self.dataset,
             eval_worker=repeat_evaluate_worker,
             num_workers=min(self.num_cpu // 4, 8),
             kwargs={
                 "design_batch_size": self.design_batch_size,
-                "verbose": self.verbose,
                 "compute_methods": self.compute_methods,
                 "RepN": self.RepN,
             },
         )
+        self.to_json(results)
+
+    def execute(self) -> None:
+        self._excete_manual_multiprocess()

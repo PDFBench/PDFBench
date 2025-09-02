@@ -1,5 +1,4 @@
 import multiprocessing as mp
-import subprocess
 from typing import Any, Callable
 
 from accelerate import Accelerator
@@ -50,13 +49,13 @@ def multiprocess_evaluate(
         proc.start()
         procs.append(proc)
 
-    results = [queue.get() for _ in range(len(procs))]
+    results = [[] for _ in range(num_workers)]
+    for _ in range(num_workers):
+        pid, sub_results = queue.get()
+        results[pid] = sub_results
+    results.reverse()  # match the pid reversion
     results = [element for sublist in results for element in sublist]
 
     for proc in procs:
         proc.join()
     return results
-
-
-def lauch(metric_name: str):
-    process = subprocess.run(("accelerate run -m {module}").format())

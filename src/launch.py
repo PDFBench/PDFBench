@@ -1,7 +1,14 @@
 from typing import Type
 
 from src.configs import EvaluationArgs
-from src.metrics import BaseEvaluator, BertScoreEvaluator, BertScoreMetric
+from src.metrics import (
+    BaseEvaluator,
+    BertScoreEvaluator,
+    BertScoreMetric,
+    IdentityEvaluator,
+    PerplexityEvaluator,
+    RepetitivenessEvaluator,
+)
 
 from .utils import logging
 
@@ -23,9 +30,9 @@ logger = logging.get_logger(__name__)
 # }
 EVALUATOR_MAP: dict[str, Type[BaseEvaluator]] = {
     BertScoreMetric.__name__: BertScoreEvaluator,
-    # "RepetitivenessMetric": BertScoreEvaluator,
-    # "PerplexityMetric": BertScoreEvaluator,
-    # "IdentityMetric": BertScoreEvaluator,
+    "RepetitivenessMetric": RepetitivenessEvaluator,
+    "PerplexityMetric": PerplexityEvaluator,
+    "IdentityMetric": IdentityEvaluator,
     # "FoldabilityMetric": BertScoreEvaluator,
     # MetricType.TMScoreMetric: TMScoreEvaluator,
     # MetricType.ProTrekScoreMetric: ProTrekScoreEvaluator,

@@ -81,7 +81,7 @@ class BertModel(Enum):
 class BertScoreArguments:
     run: bool = True
     name: str = "bert_score"
-    speed_up: bool = True
+    speed_up: bool = False
     compute_models: tuple[BertModel, ...] = (BertModel.ESM2,)
     esm2_name_or_path: str = "facebook/esm2_t33_650M_UR50D"
     esm2_batch_size: int = 64

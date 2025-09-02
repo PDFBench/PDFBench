@@ -7,7 +7,6 @@ from copy import deepcopy
 
 import accelerate
 import torch
-from torch.utils.data import DataLoader
 
 from src.configs.parser import EvaluationArgs
 from src.datasets import BaseDataset
@@ -50,8 +49,8 @@ class BaseMetric(ABC):
         self._verbose = config.basic.verbose
         self._log_dir = config.basic.log_dir
         self._visualize = config.basic.visualize
+        self._speed_up = config.basic.speed_up
         self._name: str
-        self._speed_up: bool
         self.logger = logging.get_logger(
             f"{self.__class__.__module__}.{self.__class__.__name__}"
         )
@@ -204,17 +203,19 @@ class BaseEvaluator(ABC):
         self._num_cpu = config.basic.num_cpu
         self._design_batch_size = config.basic.design_batch_size
         self._output_dir = config.basic.output_dir
+        self._speed_up = config.basic.speed_up
         self._name: str
         self.logger = logging.get_logger(
             f"{self.__class__.__module__}.{self.__class__.__name__}"
         )
-        self._accelerator = accelerate.Accelerator()
+        if self.speed_up:
+            self._accelerator = accelerate.Accelerator()
         self._dataset: BaseDataset = config.basic.dataset_type.value(
             path=config.basic.input_path,
             design_batch_size=config.basic.design_batch_size,
         )
-        self._dataloader: DataLoader
 
+    # region properties
     @property
     def config(self) -> EvaluationArgs:
         return self._config
@@ -245,15 +246,40 @@ class BaseEvaluator(ABC):
 
     @property
     def accelerator(self) -> accelerate.Accelerator:
+        if self._accelerator is None:
+            raise ValueError(
+                "Accelerator of this Metric has not been initialized."
+            )
         return self._accelerator
 
     @property
     def dataset(self) -> BaseDataset:
         return self._dataset
 
+    @property
+    def speed_up(self) -> bool:
+        if self._speed_up is None:
+            raise ValueError("Speed up of this Metric has not been set.")
+        return self._speed_up
+
+    # endregion
+
     @abstractmethod
     def execute(self) -> None: ...
 
+    def to_json(self, results: list[dict]) -> None:
+        if len(self.dataset) != len(results):
+            raise RuntimeError("The output does not match the input.")
+        for idx in range(len(self.dataset)):
+            if (
+                self.dataset[idx]["instruction"],  # type: ignore
+                self.dataset[idx]["reference"],  # type: ignore
+            ) != (results[idx]["instruction"], results[idx]["reference"]):
+                raise RuntimeError("The output does not match the input.")
+        with open(self.output_path, "w") as f:
+            json.dump(results, f, indent=2)
+
     def __del__(self) -> None:
         torch.cuda.empty_cache()
-        self.accelerator.end_training()
+        if self.speed_up:
+            self.accelerator.end_training()

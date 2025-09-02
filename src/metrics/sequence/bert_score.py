@@ -1,4 +1,4 @@
-import json
+import multiprocessing as mp
 import warnings
 
 import torch
@@ -9,6 +9,7 @@ from transformers import EsmModel, EsmTokenizer, logging
 
 from src.configs.sequence_args import BertModel
 from src.metrics import BaseEvaluator, BaseMetric
+from src.utils.multiprocess import multiprocess_evaluate
 
 logging.set_verbosity_error()
 warnings.filterwarnings(
@@ -61,12 +62,72 @@ def compute_bertscore(
     return f1, precision, recall
 
 
+def bertscore_evaluate_worker(
+    queue: mp.Queue,
+    pid: int,
+    subset: list,
+    **kwargs,
+) -> None:
+    design_batch_size = kwargs.get("design_batch_size")
+    esm2_name_or_path = kwargs.get("esm2_name_or_path")
+    esm2_batch_size = kwargs.get("esm2_batch_size")
+    if (
+        design_batch_size is None
+        or esm2_name_or_path is None
+        or esm2_batch_size is None
+    ):
+        raise ValueError(
+            "Invalid kwargs: \n"
+            f"design_batch_size: {design_batch_size}\n"
+            f"esm2_name_or_path: {esm2_name_or_path}\n"
+            f"esm2_batch_size: {esm2_batch_size}"
+        )
+
+    results: list = [dict() for _ in range(len(subset))]
+
+    # region Bertscore based on ESM-2
+    tokenizer = EsmTokenizer.from_pretrained(esm2_name_or_path)
+    model = EsmModel.from_pretrained(esm2_name_or_path).to(f"cuda:{pid}")  # type: ignore
+    model.eval()
+    idx = 0
+    for idx, item in tqdm(
+        enumerate(subset),
+        desc="Bertscore",
+        position=pid + 1,
+        ncols=100,
+        disable=pid != 0,
+    ):
+        res = {
+            "instruction": item["instruction"],
+            "reference": item["reference"],
+        }
+        for b in range(1, design_batch_size + 1):
+            bert_f1, bert_precision, bert_recall = compute_bertscore(
+                pred_seq=item[f"response#{b}"],
+                ref_seq=item["reference"],
+                model=model,
+                tokenizer=tokenizer,
+            )
+            res.update(
+                {
+                    "response#{b}": item[f"response#{b}"],
+                    "ESM2-F1": bert_f1,
+                    "ESM2-Precision": bert_precision,
+                    "ESM2-Recall": bert_recall,
+                }
+            )
+
+        results[idx].update(res)
+    # endregion
+
+    queue.put((pid, results))
+
+
 class BertScoreMetric(BaseMetric):
     def __init__(self, config):
         super().__init__(config)
         self.compute_models = config.bert_score.compute_models
         self._name = config.bert_score.name
-        self._speed_up = config.bert_score.speed_up
         self.esm2_name_or_path = config.bert_score.esm2_name_or_path
         self.esm2_batch_size = config.bert_score.esm2_batch_size
 
@@ -93,7 +154,7 @@ class BertScoreEvaluator(BaseEvaluator):
         self.esm2_name_or_path = config.bert_score.esm2_name_or_path
         self.esm2_batch_size = config.bert_score.esm2_batch_size
 
-    def execute(self) -> None:
+    def _execute_accelerate(self) -> None:
         dataloader = DataLoader(
             dataset=self.dataset,
             batch_size=self.esm2_batch_size,
@@ -108,7 +169,6 @@ class BertScoreEvaluator(BaseEvaluator):
         # accelerate prepare
         model, dataloader = self.accelerator.prepare(model, dataloader)
         model.eval()
-
         all_results: list[dict] = []
         for batch in tqdm(
             dataloader,
@@ -147,9 +207,25 @@ class BertScoreEvaluator(BaseEvaluator):
         print("All results: ", len(all_results))
         gathered_results: list[dict] = gather_object(all_results)
         print("Final results: ", len(gathered_results))
-        # endregion
 
         if self.accelerator.is_main_process:
-            print(len(gathered_results))
-            with open(self.output_path, "w") as f:
-                json.dump(gathered_results, f)
+            self.to_json(gathered_results)
+
+    def _excete_manual_multiprocess(self) -> None:
+        results = multiprocess_evaluate(
+            dataset=self.dataset,
+            eval_worker=bertscore_evaluate_worker,
+            num_workers=self.num_gpu,
+            kwargs={
+                "design_batch_size": self.design_batch_size,
+                "esm2_name_or_path": self.esm2_name_or_path,
+                "esm2_batch_size": self.esm2_batch_size,
+            },
+        )
+        self.to_json(results)
+
+    def execute(self) -> None:
+        if self.speed_up:
+            self._execute_accelerate()
+        else:
+            self._excete_manual_multiprocess()

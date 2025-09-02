@@ -1,10 +1,11 @@
 import math
+import multiprocessing as mp
+import warnings
 from typing import Callable
 
 import numpy as np
 import torch
 import torch.nn.functional as F
-from accelerate import Accelerator
 from accelerate.utils import gather_object
 from esm.sdk.api import (
     ESMProtein,
@@ -23,12 +24,23 @@ from transformers import (
 
 from src.configs.sequence_args import PerplexityModel
 from src.datasets import BaseDataset
-from src.metrics import BaseMetric
-from src.utils.multiprocess import AcceleratorManager
+from src.metrics import BaseEvaluator, BaseMetric
+from src.utils.multiprocess import multiprocess_evaluate
 
 logging.set_verbosity_error()
+warnings.filterwarnings(
+    "ignore",
+    category=UserWarning,
+    message="TypedStorage is deprecated.*",
+)
+warnings.filterwarnings(
+    "ignore",
+    category=FutureWarning,
+    message="`clean_up_tokenization_spaces` was not set.*",
+)
 
 
+# region compute functions
 def compute_perplexity_proglm_batch(sequences: list[str], tokenizer, model):
     sequences = [f"<gmask><sop><eos>{seq}" for seq in sequences]
 
@@ -167,6 +179,93 @@ def compute_perplexity_esmc_batch(sequence: str, client, batch_size: int):
     return ppl
 
 
+# endregion compute functions
+
+
+def perplexity_evaluate_worker(
+    queue: mp.Queue,
+    pid: int,
+    subset: list,
+    **kwargs,
+):
+    design_batch_size: int | None = kwargs.get("design_batch_size")
+    batch_size: int | None = kwargs.get("batch_size")
+    compute_models: list[PerplexityModel] | None = kwargs.get("compute_models")
+    model2name_or_path: dict[PerplexityModel, str] | None
+    model2name_or_path = kwargs.get("model2name_or_path")
+    model2func: dict[PerplexityModel, Callable] | None
+    model2func = kwargs.get("model2func")
+    if (
+        design_batch_size is None
+        or batch_size is None
+        or compute_models is None
+        or model2name_or_path is None
+        or model2func is None
+    ):
+        raise ValueError(
+            "Invalid kwargs: \n"
+            f"design_batch_size: {design_batch_size}\n"
+            f"batch_size: {batch_size}\n"
+            f"compute_models: {compute_models}\n"
+            f"model2name_or_path: {model2name_or_path}\n"
+            f"model2func: {model2func}"
+        )
+
+    results: list = [dict() for _ in range(len(subset))]
+    for compute_model in PerplexityModel:
+        if compute_model.name in compute_models:
+            tokenizer = AutoTokenizer.from_pretrained(
+                model2name_or_path[compute_model],
+                trust_remote_code=True,
+            )
+            model = AutoModelForCausalLM.from_pretrained(
+                model2name_or_path[compute_model],
+                trust_remote_code=True,
+                torch_dtype="auto",
+            ).to(f"cuda:{pid}")
+            model.eval()
+
+            for idx, item in enumerate(
+                tqdm(
+                    subset,
+                    desc=f"Perplextiy - {compute_model.name}",
+                    # postfix="Batch Size: Batch mode not supported",
+                    disable=pid != 0,
+                    ncols=120,
+                )
+            ):
+                res = {
+                    "instruction": item["instruction"],
+                    "reference": item["reference"],
+                }
+                for b in range(1, design_batch_size + 1):
+                    ppl = model2func[compute_model](
+                        sequence=item[f"response#{b}"],
+                        tokenizer=tokenizer,
+                        model=model,
+                    )
+                    res.update(
+                        {
+                            f"response#{b}": item[f"response#{b}"],
+                            f"PPL-{compute_model.name}#{b}": ppl,
+                        }
+                    )
+                if {"instruction", "reference"}.issubset(
+                    results[idx].keys()
+                ) and (
+                    results[idx]["instruction"] != item["instruction"]
+                    or results[idx]["reference"] != item["reference"]
+                ):
+                    raise RuntimeError(
+                        "Error in Perplextiy Match: \n "
+                        f"{item['instruction']} != {results[idx]['instruction']} \n"
+                        f"{item['reference']} != {results[idx]['reference']}"
+                    )
+                results[idx].update(res)
+
+    queue.put((pid, results))
+
+
 class PerplexityMetric(BaseMetric):
     def __init__(self, config):
         super().__init__(config)
@@ -186,8 +285,6 @@ class PerplexityMetric(BaseMetric):
             PerplexityModel.ProteinGLM: compute_perplexity_proglm,
         }
 
-        self.accelerator: Accelerator = AcceleratorManager.get_accelerator()
-
     @property
     def metrics(self) -> list[str]:
         _metrics = []
@@ -196,7 +293,27 @@ class PerplexityMetric(BaseMetric):
                 _metrics.append(f"PPL-{model.name}")
         return _metrics
 
-    def _evaluate_single(
+
+class PerplexityEvaluator(BaseEvaluator):
+    def __init__(self, config):
+        super().__init__(config)
+        self.compute_models = config.perplexity.compute_models
+        self._name = config.perplexity.name
+        self.batch_size = config.perplexity.batch_size
+        self.model2name_or_path: dict[PerplexityModel, str] = {
+            PerplexityModel.ProGen2: config.perplexity.progen2_name_or_path,
+            PerplexityModel.ProtGPT2: config.perplexity.protgpt2_name_or_path,
+            PerplexityModel.RITA: config.perplexity.rita_name_or_path,
+            PerplexityModel.ProteinGLM: config.perplexity.proteinglm_name_or_path,
+        }
+        self.model2func: dict[PerplexityModel, Callable] = {
+            PerplexityModel.ProGen2: compute_perplexity_progen2,
+            PerplexityModel.ProtGPT2: compute_perplexity_protgpt2,
+            PerplexityModel.RITA: compute_perplexity_rita,
+            PerplexityModel.ProteinGLM: compute_perplexity_proglm,
+        }
+
+    def _evaluate_accelerate_single(
         self, dataset: BaseDataset, compute_model: PerplexityModel
     ) -> list[dict[str, float | str]] | None:
         tokenizer = AutoTokenizer.from_pretrained(
@@ -249,33 +366,30 @@ class PerplexityMetric(BaseMetric):
             all_results.extend(batch_results)
 
         gathered_results: list[dict] = gather_object(all_results)
-        # endregion
 
         del model, tokenizer
         torch.cuda.empty_cache()
         if self.accelerator.is_main_process:
             return gathered_results
 
-    def _evaluate(
-        self,
-        dataset: BaseDataset,
-    ) -> list[dict]:  # type: ignore
+    def _execute_accelerate(self) -> list[dict]:  # type: ignore
+        # TODO: Support Accelerate
         # Compute PPLs using different models
         results: list[dict] = []
         for model in PerplexityModel:
             if model.name in self.compute_models:
                 results.append(
-                    self._evaluate_single(
-                        dataset,
+                    self._evaluate_accelerate_single(
+                        self.dataset,
                         model,
                     )  # type: ignore
                 )
 
         # Conbine the results of PPLs
         final_results: list[dict] = []
-        for idx in range(len(dataset)):
-            corr_inst = dataset[idx]["instruction"]  # type: ignore
-            corr_ref = dataset[idx]["reference"]  # type: ignore
+        for idx in range(len(self.dataset)):
+            corr_inst = self.dataset[idx]["instruction"]  # type: ignore
+            corr_ref = self.dataset[idx]["reference"]  # type: ignore
 
             tmp = {}
             for idy in range(len(results)):
@@ -293,4 +407,26 @@ class PerplexityMetric(BaseMetric):
 
             final_results.append(tmp)
 
-        return final_results
+        if self.accelerator.is_main_process:
+            self.to_json(final_results)
+
+    def _execute_manual_multiprocess(self) -> None:
+        results = multiprocess_evaluate(
+            dataset=self.dataset,
+            eval_worker=perplexity_evaluate_worker,
+            num_workers=self.num_gpu,
+            kwargs={
+                "design_batch_size": self.design_batch_size,
+                "batch_size": self.batch_size,
+                "compute_models": self.compute_models,
+                "model2name_or_path": self.model2name_or_path,
+                "model2func": self.model2func,
+            },
+        )
+        self.to_json(results)
+
+    def execute(self) -> None:
+        if self.speed_up:
+            self._execute_accelerate()
+        else:
+            self._execute_manual_multiprocess()
