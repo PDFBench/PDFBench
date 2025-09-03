@@ -234,9 +234,14 @@ def perplexity_evaluate_worker(
                     ncols=120,
                 )
             ):
+                # init instruction, reference and responses
                 res = {
                     "instruction": item["instruction"],
                     "reference": item["reference"],
+                    **{
+                        f"response#{b}": item[f"response#{b}"]
+                        for b in range(1, design_batch_size + 1)
+                    },
                 }
                 for b in range(1, design_batch_size + 1):
                     ppl = model2func[compute_model](
@@ -250,6 +255,7 @@ def perplexity_evaluate_worker(
                             f"PPL-{compute_model.name}#{b}": ppl,
                         }
                     )
+
                 if {"instruction", "reference"}.issubset(
                     results[idx].keys()
                 ) and (
@@ -261,6 +267,7 @@ def perplexity_evaluate_worker(
                         f"{item['instruction']} != {results[idx]['instruction']} \n"
                         f"{item['reference']} != {results[idx]['reference']}"
                     )
+
                 results[idx].update(res)
 
     queue.put((pid, results))

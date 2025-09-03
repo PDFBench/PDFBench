@@ -1,10 +1,11 @@
+import os
 from dataclasses import dataclass
 from enum import Enum, auto
 
 
 @dataclass
 class ProTrekScoreArguments:
-    protrek_path: str
+    protrek_path: str | None = None
     run: bool = True
     name: str = "protrek_score"
 
@@ -28,14 +29,22 @@ class EvoLlamaScoreArguments:
 
 @dataclass
 class KeywordRecoveryArguments:
-    interpro_scan_ex: str
-    workers_per_interpro_scan: int | None = -1
+    interpro_scan_ex_path: str
+    workers_per_scan: int = -1
     run: bool = True
     name: str = "keyword_recovery"
 
     def __post_init__(self):
         if not self.run:
             return
+
+        if self.workers_per_scan == -1:
+            cpu_count: int | None = os.cpu_count()
+            assert cpu_count is not None, (
+                "Python.os cannot detect cpu count of your device, "
+                "please set num_cpu manually"
+            )
+            self.workers_per_scan = cpu_count
 
 
 class RetrievalDifficulty(Enum):
@@ -46,17 +55,19 @@ class RetrievalDifficulty(Enum):
 
 @dataclass
 class RetrievalAccuracyArguments:
+    protrek_path: str | None = None
+    protrek_batch_size: int | None = 64
     retrieval_difficulties: tuple[RetrievalDifficulty, ...] = (
         RetrievalDifficulty.Easy,
         RetrievalDifficulty.Medium,
         RetrievalDifficulty.Hard,
     )
-    molinst_pool: str = (
+    desc_pool: str = (
         "/home/jhkuang/data/cache/dynamsa/data/Molinst/inst2seq.json"
     )
-    interpro_pool: str = (
-        "/home/jhkuang/data/cache/dynamsa/data/UniInPro/Inst2seq_w.small.json"
-    )
+    ipr_pool: str = "/nas/data/jhkuang/data/cache/dynamsa/data/keyword_guided/SwissIPG/out/swissipg_ipr.json"
+    go_pool: str = "/nas/data/jhkuang/data/cache/dynamsa/data/keyword_guided/SwissIPG/out/swissipg_go.json"
+    ipr_go_pool: str = "/nas/data/jhkuang/data/cache/dynamsa/data/keyword_guided/SwissIPG/out/swissipg_ipr_go.json"
     ec_pool: str = (
         "/home/jhkuang/data/cache/dynamsa/data/SwissEC/SwissEC_Pool.json"
     )

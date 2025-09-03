@@ -55,9 +55,7 @@ class BaseDataset(Dataset, ABC):
     def __len__(self):
         return len(self.data)
 
-    def __getitem__(
-        self, key: int | str | slice
-    ) -> dict | list[dict] | list[str]:
+    def __getitem__(self, key: int | slice) -> dict | list[dict] | list[str]:
         """
         _summary_
 

@@ -1,19 +1,18 @@
 import hashlib
+import multiprocessing as mp
 import os
 import warnings
 
 import biotite.structure.io as bsio
 import numpy as np
 import torch
-from accelerate import Accelerator
 from accelerate.utils import gather_object
-from torch.nn.parallel import DistributedDataParallel
 from torch.utils.data import DataLoader
 from tqdm.auto import tqdm
 from transformers import EsmForProteinFolding, EsmTokenizer, logging
 
-from src.datasets import BaseDataset
-from src.metrics import BaseMetric
+from src.metrics import BaseEvaluator, BaseMetric
+from src.utils.multiprocess import multiprocess_evaluate
 
 logging.set_verbosity_error()
 warnings.filterwarnings(
@@ -52,7 +51,7 @@ def get_pae(output):
 
 def compute_foldability(
     tokenizer,
-    model: DistributedDataParallel,  # DDP for transformers.ESMForProteinFolding
+    model: EsmForProteinFolding,
     sequences: list[str],
     pdb_cache_dir: str,
 ) -> list[dict]:
@@ -69,7 +68,7 @@ def compute_foldability(
         output = model(input_ids)
         pae_scores.append(get_pae(output))
 
-    pdbs = model.module.output_to_pdb(output)
+    pdbs = model.output_to_pdb(output)
     md5_sequences = [get_md5_sequence(seq) for seq in sequences]
 
     plddt_scores = []
@@ -96,7 +95,90 @@ def compute_foldability(
     return ret
 
 
+def foldability_evaluate_worker(
+    queue: mp.Queue,
+    pid: int,
+    subset: list,
+    design_batch_size: int | None = None,
+    pdb_cache_dir: str | None = None,
+    esm_fold_name_or_path: str | None = None,
+) -> None:
+    if (
+        design_batch_size is None
+        or pdb_cache_dir is None
+        or esm_fold_name_or_path is None
+    ):
+        raise ValueError(
+            "Invalid kwargs: \n"
+            f"design_batch_size: {design_batch_size}\n"
+            f"pdb_cache_dir: {pdb_cache_dir}\n"
+            f"esm_fold_name_or_path: {esm_fold_name_or_path}"
+        )
+
+    tokenizer = EsmTokenizer.from_pretrained(esm_fold_name_or_path)
+    model = EsmForProteinFolding.from_pretrained(esm_fold_name_or_path).to(
+        f"cuda:{pid}"  # type: ignore
+    )
+    model.esm = model.esm.float()
+    model.trunk.set_chunk_size(64)
+
+    results: list = [dict() for _ in range(len(subset))]
+    idx = 0
+
+    for idx, item in enumerate(
+        tqdm(
+            subset,
+            desc="Foldability",
+            ncols=100,
+            disable=pid != 0,
+        )
+    ):
+        res = {
+            "instruction": item["instruction"],
+            "reference": item["reference"],
+            **{
+                f"response#{b}": item[f"response#{b}"]
+                for b in range(1, design_batch_size + 1)
+            },
+        }
+        for b in range(1, design_batch_size + 1):
+            res.update({f"response#{b}": item[f"response#{b}"]})
+            tmp = compute_foldability(
+                tokenizer,
+                model,
+                [item[f"response#{b}"]],
+                pdb_cache_dir,
+            )[0]
+            pdb_file_name, plddt, pae = (
+                tmp["pdb_file_name"],
+                tmp["pLDDT"],
+                tmp["pAE"],
+            )
+            res.update(
+                {
+                    f"pLDDT#{b}": plddt,
+                    f"pAE#{b}": pae,
+                    f"pdb_file_name#{b}": pdb_file_name,
+                }
+            )
+        results[idx].update(res)
+
+    queue.put((pid, results))
+
+
 class FoldabilityMetric(BaseMetric):
+    def __init__(self, config):
+        super().__init__(config)
+        self._name = config.foldability.name
+        self.esm_fold_name_or_path = config.foldability.esm_fold_name_or_path
+        self.pdb_cache_dir = config.foldability.pdb_cache_dir
+
+    @property
+    def metrics(self) -> list[str]:
+        return ["pLDDT", "pLDDT>70", "pAE", "pAE<10"]
+
+
+class FoldabilityEvaluator(BaseEvaluator):
     def __init__(self, config):
         super().__init__(config)
         self._name = config.foldability.name
@@ -104,26 +186,17 @@ class FoldabilityMetric(BaseMetric):
             self.output_dir, config.foldability.pdb_cache_dir
         )
         self.esm_fold_name_or_path = config.foldability.esm_fold_name_or_path
-        self.esm_fold_batch_size = config.foldability.esm_fold_batch_size
 
         os.makedirs(self.pdb_cache_dir, exist_ok=True)
-        self.accelerator: Accelerator = Accelerator()
 
-    @property
-    def metrics(self) -> list[str]:
-        return ["pLDDT", "pLDDT>70", "pAE", "pAE<10"]
-
-    def _evaluate(
-        self,
-        dataset: BaseDataset,
-    ) -> list[dict]:  # type: ignore
+    def _execute_acclerate(self) -> list[dict]:  # type: ignore
         # region ESM2-based BertScore
         tokenizer = EsmTokenizer.from_pretrained(self.esm_fold_name_or_path)
         model = EsmForProteinFolding.from_pretrained(self.esm_fold_name_or_path)
         model.esm = model.esm.float()
         model.trunk.set_chunk_size(64)
         dataloader = DataLoader(
-            dataset=dataset,
+            dataset=self.dataset,
             batch_size=1,  # TODO: support batch
             shuffle=False,
         )
@@ -133,7 +206,6 @@ class FoldabilityMetric(BaseMetric):
         for batch in tqdm(
             dataloader,
             desc="Foldability",
-            postfix=f"Batch Size: {self.esm_fold_batch_size}",
             disable=not self.accelerator.is_main_process,
         ):
             batch_size = len(batch["instruction"])
@@ -173,3 +245,22 @@ class FoldabilityMetric(BaseMetric):
         torch.cuda.empty_cache()
         if self.accelerator.is_main_process:
             return gathered_results
+
+    def _execute_manual_multiprocess(self):
+        results = multiprocess_evaluate(
+            dataset=self.dataset,
+            eval_worker=foldability_evaluate_worker,
+            num_workers=self.num_gpu,
+            kwargs={
+                "design_batch_size": self.design_batch_size,
+                "pdb_cache_dir": self.pdb_cache_dir,
+                "esm_fold_name_or_path": self.esm_fold_name_or_path,
+            },
+        )
+        self.to_json(results)
+
+    def execute(self) -> None:
+        if self.speed_up:
+            self._execute_acclerate()
+        else:
+            self._execute_manual_multiprocess()

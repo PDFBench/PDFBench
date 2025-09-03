@@ -33,6 +33,7 @@ class Diversity(Enum):
 class DiversityArguments:
     mmseqs_ex_path: str | None = None
     tm_score_ex_path: str | None = None
+    pdb_cache_dir: str = "pdb_cache_dir/"
     diversities: tuple[Diversity, ...] = (
         Diversity.Sequence,
         Diversity.Structure,

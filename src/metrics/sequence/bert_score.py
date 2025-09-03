@@ -89,13 +89,13 @@ def bertscore_evaluate_worker(
     tokenizer = EsmTokenizer.from_pretrained(esm2_name_or_path)
     model = EsmModel.from_pretrained(esm2_name_or_path).to(f"cuda:{pid}")  # type: ignore
     model.eval()
-    idx = 0
-    for idx, item in tqdm(
-        enumerate(subset),
-        desc="Bertscore",
-        position=pid + 1,
-        ncols=100,
-        disable=pid != 0,
+    for idx, item in enumerate(
+        tqdm(
+            subset,
+            desc="Bertscore",
+            ncols=100,
+            disable=pid != 0,
+        )
     ):
         res = {
             "instruction": item["instruction"],

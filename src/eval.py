@@ -5,7 +5,9 @@ from src.metrics import (
     FoldabilityMetric,
     IdentityMetric,
     PerplexityMetric,
+    ProTrekScoreMetric,
     RepetitivenessMetric,
+    TMScoreMetric,
 )
 
 from .configs import EvaluationArgs
@@ -36,6 +38,10 @@ def evaluate(config: EvaluationArgs) -> None:
         concerns.append(IdentityMetric(config))
     if config.foldability.run:
         concerns.append(FoldabilityMetric(config))
+    if config.tm_score.run:
+        concerns.append(TMScoreMetric(config))
+    if config.protrek_score.run:
+        concerns.append(ProTrekScoreMetric(config))
     # TODO: remain metrics
 
     metrics: MetricList = MetricList(metrics=concerns, config=config)

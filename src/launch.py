@@ -5,9 +5,16 @@ from src.metrics import (
     BaseEvaluator,
     BertScoreEvaluator,
     BertScoreMetric,
+    FoldabilityEvaluator,
+    FoldabilityMetric,
     IdentityEvaluator,
+    IdentityMetric,
     PerplexityEvaluator,
+    PerplexityMetric,
     RepetitivenessEvaluator,
+    RepetitivenessMetric,
+    TMScoreEvaluator,
+    TMScoreMetric,
 )
 
 from .utils import logging
@@ -30,11 +37,11 @@ logger = logging.get_logger(__name__)
 # }
 EVALUATOR_MAP: dict[str, Type[BaseEvaluator]] = {
     BertScoreMetric.__name__: BertScoreEvaluator,
-    "RepetitivenessMetric": RepetitivenessEvaluator,
-    "PerplexityMetric": PerplexityEvaluator,
-    "IdentityMetric": IdentityEvaluator,
-    # "FoldabilityMetric": BertScoreEvaluator,
-    # MetricType.TMScoreMetric: TMScoreEvaluator,
+    RepetitivenessMetric.__name__: RepetitivenessEvaluator,
+    PerplexityMetric.__name__: PerplexityEvaluator,
+    IdentityMetric.__name__: IdentityEvaluator,
+    FoldabilityMetric.__name__: FoldabilityEvaluator,
+    TMScoreMetric.__name__: TMScoreEvaluator,
     # MetricType.ProTrekScoreMetric: ProTrekScoreEvaluator,
     # MetricType.EvoLlamaScoreMetric: EvoLlamaScoreEvaluator,
     # MetricType.RetrievalAccuracyMetric: RetrievalAccuracyEvaluator,

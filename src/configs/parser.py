@@ -1,4 +1,5 @@
 import json
+import os
 from dataclasses import dataclass
 from typing import Any, Optional
 
@@ -92,4 +93,39 @@ class EvaluationArgs(Args):
             raise ValueError(
                 "At least one `tm_score_ex_path` in "
                 "[`tm_score`, `diversity`] must be set"
+            )
+
+        # pdb_cache_dir
+        pdb_cache_dir = (
+            self.foldability.pdb_cache_dir
+            or self.tm_score.pdb_cache_dir
+            or self.diversity.pdb_cache_dir
+        )
+        if pdb_cache_dir:
+            if not os.path.isabs(pdb_cache_dir):
+                pdb_cache_dir = os.path.join(
+                    self.basic.output_dir, pdb_cache_dir
+                )
+            self.foldability.pdb_cache_dir = self.tm_score.pdb_cache_dir = (
+                self.diversity.pdb_cache_dir
+            ) = pdb_cache_dir
+            os.makedirs(pdb_cache_dir, exist_ok=True)
+        else:
+            raise ValueError(
+                "At least one `pdb_cache_dir` in "
+                "[`foldability`, `diversity`] must be set"
+            )
+
+        # protrek
+        protrek_path = (
+            self.protrek_score.protrek_path or self.retrievl_acc.protrek_path
+        )
+        if protrek_path:
+            self.protrek_score.protrek_path = self.retrievl_acc.protrek_path = (
+                protrek_path
+            )
+        else:
+            raise ValueError(
+                "At least one `protrek_path` in "
+                "[`protrek_score`, `retrievl_acc`] must be set"
             )
