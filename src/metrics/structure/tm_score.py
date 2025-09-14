@@ -3,6 +3,7 @@ import os
 import subprocess
 import warnings
 
+import numpy as np
 from tqdm.auto import tqdm
 from transformers import EsmForProteinFolding, EsmTokenizer, logging
 
@@ -36,24 +37,28 @@ def compute_tm_score(
     tokenizer: EsmTokenizer,
     pdb_cache_dir: str,
 ):
-    pdb_ref = os.path.join(pdb_cache_dir, f"{seq_to_md5(ref)}.pdb")
-    if not os.path.exists(pdb_ref):
-        seq_to_struc(
-            tokenizer=tokenizer,
-            model=model,
-            sequences=[ref],
-            pdb_cache_dir=pdb_cache_dir,
-            return_foldability=False,
-        )
-    pdb_res = os.path.join(pdb_cache_dir, f"{seq_to_md5(res)}.pdb")
-    if not os.path.exists(pdb_ref):
-        seq_to_struc(
-            tokenizer=tokenizer,
-            model=model,
-            sequences=[res],
-            pdb_cache_dir=pdb_cache_dir,
-            return_foldability=False,
-        )
+    try:
+        pdb_ref = os.path.join(pdb_cache_dir, f"{seq_to_md5(ref)}.pdb")
+        if not os.path.exists(pdb_ref):
+            seq_to_struc(
+                tokenizer=tokenizer,
+                model=model,
+                sequences=[ref],
+                pdb_cache_dir=pdb_cache_dir,
+                return_foldability=False,
+            )
+        pdb_res = os.path.join(pdb_cache_dir, f"{seq_to_md5(res)}.pdb")
+        if not os.path.exists(pdb_res):
+            seq_to_struc(
+                tokenizer=tokenizer,
+                model=model,
+                sequences=[res],
+                pdb_cache_dir=pdb_cache_dir,
+                return_foldability=False,
+            )
+    except Exception as e:
+        warnings.warn(f"TmScore Error with {e}")
+        return float("nan")
 
     try:
         result = subprocess.run(
@@ -82,9 +87,9 @@ def tm_score_evaluate_worker(
     pid: int,
     subset: list,
     design_batch_size: int,
-    tm_score_ex_path: str | None = None,
-    esm_fold_name_or_path: str | None = None,
-    pdb_cache_dir: str | None = None,
+    tm_score_ex_path: str,
+    esm_fold_name_or_path: str,
+    pdb_cache_dir: str,
 ) -> None:
     if (
         tm_score_ex_path is None
@@ -103,7 +108,7 @@ def tm_score_evaluate_worker(
         f"cuda:{pid}"  # type: ignore
     )
     model.esm = model.esm.float()
-    model.trunk.set_chunk_size(64)
+    model.trunk.set_chunk_size(64)  # type: ignore
 
     results: list = [dict() for _ in range(len(subset))]
     for idx, item in enumerate(
@@ -149,6 +154,22 @@ class TMScoreMetric(BaseMetric):
     @property
     def metrics(self) -> list[str]:
         return ["GT-TMScore"]
+
+    def summary(self, results) -> dict:
+        bs = self.design_batch_size
+        _summary = {}
+        if bs == 1:
+            _summary["GT-TMScore"] = results["GT-TMScore#1"].mean() * 100
+        else:
+            tmscores = [
+                results[f"GT-TMScore#{b}"].mean() * 100
+                for b in range(1, bs + 1)
+            ]
+            _summary["GT-TMScore"] = np.nanmean(tmscores)
+            _summary.update(
+                {f"GT-TMScore#{b}": tmscores[b - 1] for b in range(1, bs + 1)}
+            )
+        return _summary
 
 
 class TMScoreEvaluator(BaseEvaluator):

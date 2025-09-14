@@ -3,6 +3,8 @@ import os
 import subprocess
 import tempfile
 
+import numpy as np
+from pandas import DataFrame
 from tqdm.auto import tqdm
 
 from src.metrics import BaseEvaluator, BaseMetric
@@ -146,6 +148,23 @@ class IdentityMetric(BaseMetric):
     def metrics(self) -> list[str]:
         return ["identity"]
 
+    def summary(self, results: DataFrame) -> dict:
+        bs = self.design_batch_size
+        if bs == 1:
+            return {
+                "identity": results["identity#1"].mean() * 100,
+            }
+        else:
+            identities = [
+                results[f"identity#{b}"].mean() * 100 for b in range(1, bs + 1)
+            ]
+            return {
+                "identity": np.mean(identities),
+                **{
+                    f"identity#{b}": identities[b - 1] for b in range(1, bs + 1)
+                },
+            }
+
 
 class IdentityEvaluator(BaseEvaluator):
     def __init__(self, config):
@@ -158,7 +177,9 @@ class IdentityEvaluator(BaseEvaluator):
         results = multiprocess_evaluate(
             dataset=self.dataset,
             eval_worker=identity_evaluate_worker,
-            num_workers=self.num_cpu // self.thread_per_mmseqs,
+            num_workers=self.num_cpu - 8
+            if self.num_cpu > 16
+            else self.num_cpu // self.thread_per_mmseqs,
             kwargs={
                 "design_batch_size": self.design_batch_size,
                 "thread_per_mmseqs": self.thread_per_mmseqs,

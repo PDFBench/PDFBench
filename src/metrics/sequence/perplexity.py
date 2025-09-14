@@ -25,6 +25,7 @@ from transformers import (
 from src.configs.sequence_args import PerplexityModel
 from src.datasets import BaseDataset
 from src.metrics import BaseEvaluator, BaseMetric
+from src.utils.context_manager import suppress_stdout
 from src.utils.multiprocess import multiprocess_evaluate
 
 logging.set_verbosity_error()
@@ -244,11 +245,14 @@ def perplexity_evaluate_worker(
                     },
                 }
                 for b in range(1, design_batch_size + 1):
-                    ppl = model2func[compute_model](
-                        sequence=item[f"response#{b}"],
-                        tokenizer=tokenizer,
-                        model=model,
-                    )
+                    try:
+                        ppl = model2func[compute_model](
+                            sequence=item[f"response#{b}"],
+                            tokenizer=tokenizer,
+                            model=model,
+                        )
+                    except Exception:
+                        ppl = float("nan")
                     res.update(
                         {
                             f"response#{b}": item[f"response#{b}"],
@@ -300,6 +304,40 @@ class PerplexityMetric(BaseMetric):
                 _metrics.append(f"PPL-{model.name}")
         return _metrics
 
+    def summary(self, results) -> dict:
+        bs = self.design_batch_size
+        if bs == 1:
+            return {
+                f"PPL-{model.name}": results[f"PPL-{model.name}#1"].mean()
+                for model in PerplexityModel
+                if model.name in self.compute_models
+            }
+        else:
+            ppls = {
+                f"PPL-{model.name}": [
+                    results[f"PPL-{model.name}#{b}"].mean()
+                    for b in range(1, bs + 1)
+                ]
+                for model in PerplexityModel
+                if model.name in self.compute_models
+            }
+
+            out = {}
+            for model in PerplexityModel:
+                if model.name in self.compute_models:
+                    out[f"PPL-{model.name}"] = np.mean(
+                        ppls[f"PPL-{model.name}"]
+                    )
+                    out.update(
+                        {
+                            f"PPL-{model.name}#{b}": ppls[f"PPL-{model.name}"][
+                                b - 1
+                            ]
+                            for b in range(1, bs + 1)
+                        }
+                    )
+            return out
+
 
 class PerplexityEvaluator(BaseEvaluator):
     def __init__(self, config):
@@ -323,15 +361,16 @@ class PerplexityEvaluator(BaseEvaluator):
     def _evaluate_accelerate_single(
         self, dataset: BaseDataset, compute_model: PerplexityModel
     ) -> list[dict[str, float | str]] | None:
-        tokenizer = AutoTokenizer.from_pretrained(
-            self.model2name_or_path[compute_model],
-            trust_remote_code=True,
-        )
-        model = AutoModelForCausalLM.from_pretrained(
-            self.model2name_or_path[compute_model],
-            trust_remote_code=True,
-            torch_dtype="auto",
-        )
+        with suppress_stdout():
+            tokenizer = AutoTokenizer.from_pretrained(
+                self.model2name_or_path[compute_model],
+                trust_remote_code=True,
+            )
+            model = AutoModelForCausalLM.from_pretrained(
+                self.model2name_or_path[compute_model],
+                trust_remote_code=True,
+                torch_dtype="auto",
+            )
         model.eval()
         dataloader = DataLoader(
             dataset=dataset,

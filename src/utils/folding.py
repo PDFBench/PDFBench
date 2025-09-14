@@ -42,6 +42,31 @@ def output_to_pae(output):
     return pae.mean()
 
 
+def clean_seq(sequence: str) -> str:
+    replacement_map = {
+        "B": "N",  # Aspartic acid or Asparagine -> Asparagine
+        "Z": "Q",  # Glutamic acid or Glutamine -> Glutamine
+        "J": "L",  # Leucine or Isoleucine -> Leucine
+        "U": "C",  # Selenocysteine -> Cysteine
+        "O": "K",  # Pyrrolysine -> Lysine
+        "X": "G",  # Unknown -> Glycine
+        "-": "",  # Gap -> Remove
+        "*": "",  # Stop codon -> Remove
+        "?": "G",  # Unknown -> Glycine
+        "~": "G",  # Unresolved -> Glycine
+        ".": "",  # Gap -> Remove
+    }
+
+    # 将序列转换为大写，并处理小写字母（先转换再替换）
+    cleaned_seq = sequence.upper()
+
+    # 进行替换
+    for non_std, replacement in replacement_map.items():
+        cleaned_seq = cleaned_seq.replace(non_std, replacement)
+
+    return cleaned_seq
+
+
 def seq_to_struc(
     tokenizer: EsmTokenizer,
     model: EsmForProteinFolding,
@@ -73,6 +98,7 @@ def seq_to_struc(
             sequences_to_compute.append(seq)
             indices_to_compute.append(idx)
 
+    sequences_to_compute = [clean_seq(seq) for seq in sequences_to_compute]
     if sequences_to_compute:
         input_ids = tokenizer(
             sequences_to_compute,

@@ -1,3 +1,4 @@
+import os
 from dataclasses import dataclass
 from enum import Enum, auto
 
@@ -9,10 +10,12 @@ class Novelty(Enum):
 
 @dataclass
 class NoveltyArguments:
-    mmseqs_ex_path: str | None = None
-    novelties: tuple[Novelty, ...] = (Novelty.Sequence,)
+    mmseqs_ex_path: str
+    database_path: str
     run: bool = True
     name: str = "novelty"
+    workers_per_mmseqs: int | None = -1
+    novelties: tuple[Novelty, ...] = (Novelty.Sequence,)
 
     def __post_init__(self):
         if not self.run:
@@ -22,6 +25,13 @@ class NoveltyArguments:
             raise ValueError(
                 "At least one novelty (`Sequence`, `Structure`) must be selected for computing Novelty"
             )
+
+        if self.workers_per_mmseqs == -1:
+            cpu_cnt = os.cpu_count()
+            assert cpu_cnt is not None
+            self.workers_per_mmseqs = (
+                cpu_cnt - 8 if cpu_cnt > 32 else cpu_cnt
+            ) // len(os.environ["CUDA_VISIBLE_DEVICES"].split(","))
 
 
 class Diversity(Enum):
@@ -33,6 +43,7 @@ class Diversity(Enum):
 class DiversityArguments:
     mmseqs_ex_path: str | None = None
     tm_score_ex_path: str | None = None
+    esm_fold_name_or_path: str = "facebook/esmfold_v1"
     pdb_cache_dir: str = "pdb_cache_dir/"
     diversities: tuple[Diversity, ...] = (
         Diversity.Sequence,

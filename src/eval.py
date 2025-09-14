@@ -2,18 +2,24 @@ import os
 
 from src.metrics import (
     BertScoreMetric,
+    DiversityMetric,
+    EvoLlamaScoreMetric,
     FoldabilityMetric,
+    GOScoreMetric,
     IdentityMetric,
+    IPRScoreMetric,
+    NoveltyMetric,
     PerplexityMetric,
     ProTrekScoreMetric,
     RepetitivenessMetric,
+    RetrievalAccuracyMetric,
     TMScoreMetric,
 )
 
 from .configs import EvaluationArgs
 from .metrics import MetricList
 from .utils import logging
-from .utils.visualization import to_csv
+from .utils.visualization import to_json
 
 logger = logging.get_logger(__name__)
 
@@ -34,24 +40,36 @@ def evaluate(config: EvaluationArgs) -> None:
         concerns.append(BertScoreMetric(config))
     if config.perplexity.run:
         concerns.append(PerplexityMetric(config))
-    if config.identity.run:
-        concerns.append(IdentityMetric(config))
+
     if config.foldability.run:
         concerns.append(FoldabilityMetric(config))
-    if config.tm_score.run:
-        concerns.append(TMScoreMetric(config))
     if config.protrek_score.run:
         concerns.append(ProTrekScoreMetric(config))
-    # TODO: remain metrics
+    if config.retrievl_acc.run:
+        concerns.append(RetrievalAccuracyMetric(config))
+    if config.evollama_score.run:
+        concerns.append(EvoLlamaScoreMetric(config))
+    if config.novelty.run:
+        concerns.append(NoveltyMetric(config))
+    if config.go_score.run:
+        concerns.append(GOScoreMetric(config))
+    if config.identity.run:
+        concerns.append(IdentityMetric(config))
+    if config.tm_score.run:
+        concerns.append(TMScoreMetric(config))
+    if config.diversity.run:
+        concerns.append(DiversityMetric(config))
+    if config.ipr_score.run:
+        concerns.append(IPRScoreMetric(config))
 
     metrics: MetricList = MetricList(metrics=concerns, config=config)
     results = metrics.evaluate()
 
     if config.basic.visualize:
-        to_csv(
+        to_json(
             results=results,
             output_path=os.path.join(
-                config.basic.output_dir, config.basic.visual_name
+                config.basic.output_dir, config.basic.visual_name + ".json"
             ),
         )
 

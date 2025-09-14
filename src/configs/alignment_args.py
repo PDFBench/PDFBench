@@ -1,6 +1,11 @@
 import os
+import shutil
 from dataclasses import dataclass
 from enum import Enum, auto
+
+from src.utils.logging import get_logger
+
+logger = get_logger(__name__)
 
 
 @dataclass
@@ -27,49 +32,67 @@ class EvoLlamaScoreArguments:
             return
 
 
+class Keyword(Enum):
+    IPR = auto()
+    GO = auto()
+    EC = auto()
+
+
 @dataclass
-class KeywordRecoveryArguments:
+class IPRScoreArguments:
+    # InterPro
     interpro_scan_ex_path: str
-    workers_per_scan: int = -1
+    interpro_cache_path: str
+    workers_per_scan: int
+
     run: bool = True
-    name: str = "keyword_recovery"
+    name: str = "ipr_score"
 
     def __post_init__(self):
         if not self.run:
             return
 
         if self.workers_per_scan == -1:
-            cpu_count: int | None = os.cpu_count()
-            assert cpu_count is not None, (
+            cpu_cnt: int | None = os.cpu_count()
+            assert cpu_cnt is not None, (
                 "Python.os cannot detect cpu count of your device, "
                 "please set num_cpu manually"
             )
-            self.workers_per_scan = cpu_count
+            self.workers_per_scan = cpu_cnt if cpu_cnt < 16 else cpu_cnt - 8
+
+        if shutil.which("java") is None:
+            self.run = False
+            logger.warning_rank0("Java is not installed, skip IPRScoreMetric")
+
+
+@dataclass
+class GOScoreArguments:
+    deepgo_root: str
+    deepgo_threshold: float = 0.7
+    deepgo_batch_size: int = 64
+
+    run: bool = True
+    name: str = "go_score"
+
+    def __post_init__(self):
+        if not self.run:
+            return
 
 
 class RetrievalDifficulty(Enum):
-    Easy = auto()
-    Medium = auto()
+    Soft = auto()
+    Normal = auto()
     Hard = auto()
 
 
 @dataclass
 class RetrievalAccuracyArguments:
     protrek_path: str | None = None
-    protrek_batch_size: int | None = 64
+    protrek_batch_size: int | None = 16
     retrieval_difficulties: tuple[RetrievalDifficulty, ...] = (
-        RetrievalDifficulty.Easy,
-        RetrievalDifficulty.Medium,
+        RetrievalDifficulty.Soft,
+        RetrievalDifficulty.Normal,
         RetrievalDifficulty.Hard,
-    )
-    desc_pool: str = (
-        "/home/jhkuang/data/cache/dynamsa/data/Molinst/inst2seq.json"
-    )
-    ipr_pool: str = "/nas/data/jhkuang/data/cache/dynamsa/data/keyword_guided/SwissIPG/out/swissipg_ipr.json"
-    go_pool: str = "/nas/data/jhkuang/data/cache/dynamsa/data/keyword_guided/SwissIPG/out/swissipg_go.json"
-    ipr_go_pool: str = "/nas/data/jhkuang/data/cache/dynamsa/data/keyword_guided/SwissIPG/out/swissipg_ipr_go.json"
-    ec_pool: str = (
-        "/home/jhkuang/data/cache/dynamsa/data/SwissEC/SwissEC_Pool.json"
     )
     run: bool = True
     name: str = "retrieval_accuracy"

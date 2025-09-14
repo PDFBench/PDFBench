@@ -1,6 +1,6 @@
 from .alignment_args import (
     EvoLlamaScoreArguments,
-    KeywordRecoveryArguments,
+    IPRScoreArguments,
     ProTrekScoreArguments,
     RetrievalAccuracyArguments,
 )

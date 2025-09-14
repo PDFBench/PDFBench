@@ -1,8 +1,10 @@
 import multiprocessing as mp
 import warnings
 
+import numpy as np
 import torch
 from accelerate.utils import gather_object
+from pandas import DataFrame
 from torch.utils.data import DataLoader
 from tqdm.auto import tqdm
 from transformers import EsmModel, EsmTokenizer, logging
@@ -92,7 +94,7 @@ def bertscore_evaluate_worker(
     for idx, item in enumerate(
         tqdm(
             subset,
-            desc="Bertscore",
+            desc="BertScore",
             ncols=100,
             disable=pid != 0,
         )
@@ -110,10 +112,10 @@ def bertscore_evaluate_worker(
             )
             res.update(
                 {
-                    "response#{b}": item[f"response#{b}"],
-                    "ESM2-F1": bert_f1,
-                    "ESM2-Precision": bert_precision,
-                    "ESM2-Recall": bert_recall,
+                    f"response#{b}": item[f"response#{b}"],
+                    f"ESM2-F1#{b}": bert_f1,
+                    f"ESM2-Precision#{b}": bert_precision,
+                    f"ESM2-Recall#{b}": bert_recall,
                 }
             )
 
@@ -144,6 +146,63 @@ class BertScoreMetric(BaseMetric):
                     ]
                 )
         return _metrics
+
+    def summary(self, results: DataFrame) -> dict:
+        bs = self.design_batch_size
+        if bs == 1:
+            out = {}
+            for model in BertModel:
+                if model.name in self.compute_models:
+                    out.update(
+                        {
+                            f"{model.name}-F1": results[
+                                f"{model.name}-F1#1"
+                            ].mean(),
+                            f"{model.name}-Precision": results[
+                                f"{model.name}-Precision#1"
+                            ].mean(),
+                            f"{model.name}-Recall": results[
+                                f"{model.name}-Recall#1"
+                            ].mean(),
+                        }
+                    )
+
+        else:
+            scores = {
+                f"{model.name}": {
+                    "F1": [
+                        results[f"{model.name}-F1#{b}"].mean() * 100
+                        for b in range(1, bs + 1)
+                    ],
+                    "Precision": [
+                        results[f"{model.name}-Precision#{b}"].mean() * 100
+                        for b in range(1, bs + 1)
+                    ],
+                    "Recall": [
+                        results[f"{model.name}-Recall#{b}"].mean() * 100
+                        for b in range(1, bs + 1)
+                    ],
+                }
+                for model in BertModel
+                if model.name in self.compute_models
+            }
+
+            out = {}
+            for model in BertModel:
+                if model.name in self.compute_models:
+                    for label in ["F1", "Precision", "Recall"]:
+                        out[f"{model.name}-{label}"] = np.mean(
+                            scores[f"{model.name}"][label]
+                        )
+                        out.update(
+                            {
+                                f"{model.name}-{label}#{b}": scores[
+                                    f"{model.name}"
+                                ][label][b - 1]
+                                for b in range(1, bs + 1)
+                            }
+                        )
+        return out
 
 
 class BertScoreEvaluator(BaseEvaluator):

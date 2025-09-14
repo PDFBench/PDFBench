@@ -36,6 +36,7 @@ class BaseDataset(Dataset, ABC):
                 assert len(self.data) > 0, "Results must not be empty"
                 assert self.support_keys.issubset(self.data[0].keys()), (
                     f"Results must contain keys: {self.support_keys}"
+                    f" but got {set(self.data[0].keys())}"
                 )
             except AssertionError as e:
                 raise RuntimeError(

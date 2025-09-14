@@ -1,19 +1,7 @@
 import multiprocessing as mp
 from typing import Any, Callable
 
-from accelerate import Accelerator
-
 from src.datasets import BaseDataset
-
-
-class AcceleratorManager:
-    _accelerator: Accelerator | None = None
-
-    @classmethod
-    def get_accelerator(cls) -> Accelerator:
-        if cls._accelerator is None:
-            cls._accelerator = Accelerator()
-        return cls._accelerator
 
 
 def multiprocess_evaluate(

@@ -5,7 +5,7 @@ import subprocess
 from abc import ABC, abstractmethod
 from copy import deepcopy
 
-import accelerate
+import pandas as pd
 import torch
 
 from src.configs.parser import EvaluationArgs
@@ -23,20 +23,16 @@ class EvaluationOutput:
         results: list[dict],
         metrics: list[str],
         design_batch_size: int,
+        summary: dict,
     ) -> None:
         self._results = results
         self._metrics = metrics
         self._design_batch_size = design_batch_size
+        self._summary = summary
 
     @property
-    def means(self):
-        # TODO: Implement
-        raise NotImplementedError
-
-    @property
-    def stds(self):
-        # TODO: Implement
-        raise NotImplementedError
+    def summary(self) -> dict:
+        return self._summary
 
 
 class BaseMetric(ABC):
@@ -144,8 +140,10 @@ class BaseMetric(ABC):
                     "accelerate launch"
                     " --multi_gpu --num_processes {num_processes}"
                 ).format(num_processes=self.config.basic.num_gpu)
+            elif self.__class__.__name__ == "GOScoreMetric":
+                handler = "/home/jhkuang/.conda/envs/PDF-DeepGO2/bin/python"
             else:
-                handler = "python"
+                handler = "/home/jhkuang/.conda/envs/PDF/bin/python"
 
             subprocess.run(
                 args=shlex.split(
@@ -167,7 +165,11 @@ class BaseMetric(ABC):
             results=results,
             metrics=self.metrics,
             design_batch_size=self.design_batch_size,
+            summary=self.summary(pd.DataFrame(results)),
         )
+
+    @abstractmethod
+    def summary(self, results: pd.DataFrame) -> dict: ...
 
 
 class MetricList:
@@ -245,7 +247,7 @@ class BaseEvaluator(ABC):
         return self._num_gpu
 
     @property
-    def accelerator(self) -> accelerate.Accelerator:
+    def accelerator(self):
         if self._accelerator is None:
             raise ValueError(
                 "Accelerator of this Metric has not been initialized."
@@ -269,13 +271,21 @@ class BaseEvaluator(ABC):
 
     def to_json(self, results: list[dict]) -> None:
         if len(self.dataset) != len(results):
-            raise RuntimeError("The output does not match the input.")
+            raise RuntimeError("The length of output does not match the input.")
         for idx in range(len(self.dataset)):
             if (
                 self.dataset[idx]["instruction"],  # type: ignore
                 self.dataset[idx]["reference"],  # type: ignore
             ) != (results[idx]["instruction"], results[idx]["reference"]):
-                raise RuntimeError("The output does not match the input.")
+                raise RuntimeError(
+                    "The instruction and reference of output does not match that of the input: \n"
+                    "Input: \n"
+                    f"{self.dataset[idx]['instruction']} \n"  # type: ignore
+                    f"{self.dataset[idx]['reference']} \n"  # type: ignore
+                    "Output: \n"
+                    f"{results[idx]['instruction']} \n"
+                    f"{results[idx]['reference']}"
+                )
         with open(self.output_path, "w") as f:
             json.dump(results, f, indent=2)
 

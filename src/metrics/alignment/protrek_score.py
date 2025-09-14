@@ -1,14 +1,17 @@
 import multiprocessing as mp
-import os
+from typing import Callable
 
+import numpy as np
 import torch
 from tqdm.auto import tqdm
 
-from src.metrics import BaseEvaluator, BaseMetric
-from src.metrics.alignment.ProTrek.model.ProTrek.protrek_trimodal_model import (
-    ProTrekTrimodalModel,
-)
-from src.utils.multiprocess import multiprocess_evaluate
+from src.utils.context_manager import suppress_all_output
+
+with suppress_all_output():
+    from src.metrics.alignment.utils import load_protrek
+    from src.utils.multiprocess import multiprocess_evaluate
+
+from ..metric import BaseEvaluator, BaseMetric
 
 
 def protrek_score_evaluate_worker(
@@ -17,6 +20,7 @@ def protrek_score_evaluate_worker(
     subset: list[dict],
     design_batch_size: int,
     protrek_path: str,
+    functional: Callable,
 ):
     if design_batch_size is None or protrek_path is None:
         raise ValueError(
@@ -25,19 +29,7 @@ def protrek_score_evaluate_worker(
             f"pdb_cache_dir: {protrek_path}"
         )
 
-    config = {
-        "protein_config": os.path.join(protrek_path, "esm2_t33_650M_UR50D"),
-        "text_config": os.path.join(
-            protrek_path, "BiomedNLP-PubMedBERT-base-uncased-abstract-fulltext"
-        ),
-        "structure_config": os.path.join(protrek_path, "foldseek_t30_150M"),
-        "load_protein_pretrained": False,
-        "load_text_pretrained": False,
-        "from_checkpoint": os.path.join(
-            protrek_path, "ProTrek_650M_UniRef50.pt"
-        ),
-    }
-    model = ProTrekTrimodalModel(**config).eval().to(f"cuda:{pid}")  # type: ignore
+    model = load_protrek(protrek_path, pid)
 
     results = []
     with torch.no_grad():
@@ -49,6 +41,7 @@ def protrek_score_evaluate_worker(
         ):
             res = {
                 "instruction": item["instruction"],
+                "function": functional(item["instruction"]),
                 "reference": item["reference"],
                 **{
                     f"response#{b}": item[f"response#{b}"]
@@ -58,8 +51,11 @@ def protrek_score_evaluate_worker(
             for b in range(1, design_batch_size + 1):
                 res.update({f"response#{b}": item[f"response#{b}"]})
 
-                text, sequence = item["instruction"], item[f"response#{b}"]
-                text_embedding = model.get_text_repr([text])
+                function, sequence = (
+                    functional(item["instruction"]),
+                    item[f"response#{b}"],
+                )
+                text_embedding = model.get_text_repr([function])
 
                 sequence_embedding = model.get_protein_repr([sequence])
                 protrek_score = torch.nn.functional.cosine_similarity(
@@ -83,6 +79,25 @@ class ProTrekScoreMetric(BaseMetric):
     def metrics(self) -> list[str]:
         return ["ProTrekScore"]
 
+    def summary(self, results) -> dict[str, float]:
+        bs = self.design_batch_size
+        _summary = {}
+        if bs == 1:
+            _summary["ProTrekScore"] = results["ProTrekScore#1"].mean() * 100
+        else:
+            protrek_scores = [
+                results[f"ProTrekScore#{b}"].mean() * 100
+                for b in range(1, bs + 1)
+            ]
+            _summary["ProTrekScore"] = np.nanmean(protrek_scores)
+            _summary.update(
+                {
+                    f"ProTrekScore#{b}": protrek_scores[b - 1]
+                    for b in range(1, bs + 1)
+                }
+            )
+        return _summary
+
 
 class ProTrekScoreEvaluator(BaseEvaluator):
     def __init__(self, config):
@@ -101,6 +116,7 @@ class ProTrekScoreEvaluator(BaseEvaluator):
             kwargs={
                 "design_batch_size": self.design_batch_size,
                 "protrek_path": self.protrek_path,
+                "functional": self.dataset.function,
             },
         )
         self.to_json(results)

@@ -164,6 +164,7 @@ cython_debug/
 # EvoLlama and ProTrek Folder
 **/EvoLlama/
 **/ProTrek/
+**/deepgo2/
 
 # test
 test_*
@@ -183,3 +184,5 @@ test_*
 
 # VSCode
 **/.vscode/
+
+configs/

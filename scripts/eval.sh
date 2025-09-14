@@ -1,166 +1,43 @@
-# Scripts for evaluation of PDFBench.
-# This script evaluates a single designed result.
+#!/bin/bash
+handler=/home/jhkuang/.conda/envs/PDF/bin/python
+config_root=/nas/data/jhkuang/projects/PDFBench_related/PDFBench/configs
+# 颜色定义
+GREEN='\033[0;32m'
+BLUE='\033[0;34m'
+RED='\033[0;31m'
+CYAN='\033[0;36m'
+YELLOW='\033[1;33m'
+NC='\033[0m'
+export FEISHU_USER="18384629319"
 
-# region 1.Settings(See README)
-export TRANSFORMERS_OFFLINE=1 HF_DATASETS_OFFLINE=1 HF_EVALUATE_OFFLINE=1
-# The path to PDFBench project
-PROJECT_ROOT=/path/to/PDFBench
-# The directionary containing data for evaluation
-EVAL_DIR=${PROJECT_ROOT}/example/single
-# The evaluation task of your data
-# We support description-guided and keyword-guided
-TASK=description-guided # keyword-guided task need more preparsion, see README
-
-# region 1.1.Evaluation Settings(See README)
-# ProTrek weights
-PROTREK=/path/to/ProTrek-650M/weights/folder
-# EvoLlama weights
-EVOLLAMA=/path/to/EvoLlama/weights/folder
-LLAMA=/path/to/Llama-3.2-3B-Instruct/weigths/folder
-# ESMFold weights
-ESMFOLD=/path/to/esmfold/weights/folder
-# MMseqs2
-MMSEQS_EX=/path/to/mmseqs/bin/mmseqs
-MMSEQS_DB=/path/to/mmseqs/DB/uniprotdb_gpu
-# Interproscan
-INTERPRO_SCAN_EX=/path/to/interproscan/interproscan-5.73-104.0/interproscan.sh
-# TMscore
-TM_SCORE_EX=/path/to/TMscore/TMscore
-# Diversity
-
-# endregion Basement
-
-# region 1.2.Device Settings
-# NO-GPU Workers(We recommand you to utilize >= 6 workers for Retrieval-based taskes)
-NUM_WORKERS=$(( $(nproc) / 6 )) 
-# GPU Workers(Specify the number currently available on your machine)
-export CUDA_VISIBLE_DEVICES=0,1,2,3 
-# Workers for InterProScan, we strongly recommend utilizing all process of your machine to accelerate the search process.
-WORKERS_PER_INTERPRO=$(( $(nproc) ))  
-# Without modification
-NUM_DEVICES=$(echo $CUDA_VISIBLE_DEVICES | awk -F "," '{print NF}')
-# endregion Device
-
-# region 1.3.Setting Display
-echo ">>>  $(date "+[%-m-%d-%H:%M:%S]") [Your Settings] >>>"
-echo Project Root: ${PROJECT_ROOT}
-echo Evaluation Directory: ${EVAL_DIR}
-echo Task: ${TASK}
-echo ">>1.Tools"
-echo >PROTREK: ${PROTREK}
-echo >EVOLLAMA: ${EVOLLAMA}
-echo >LLAMA: ${LLAMA}
-echo >MMSEQS_EX: ${MMSEQS_EX}
-echo >MMSEQS_DB: ${MMSEQS_DB}
-echo >INTERPRO_SCAN_EX: ${INTERPRO_SCAN_EX}
-echo >TM_SCORE_EX: ${TM_SCORE_EX}
-echo ">>Devices"
-echo >NUM_DEVICES: ${NUM_DEVICES}
-echo >CUDA_VISIBLE_DEVICES: ${CUDA_VISIBLE_DEVICES}
-echo >NUM_WORKERS: ${NUM_WORKERS}
-echo >WORKERS_PER_INTERPRO: ${WORKERS_PER_INTERPRO}
-# endregion
-
-# endregion 1.Settings
-
-# region 2.Evaluation
-
-# region 2.1.GPU-based
-cd ${PROJECT_ROOT}
-# Path check
-if [ ! -d ${EVAL_DIR} ]; then
-    echo ${EVAL_DIR} does not exist >&2
+# 加载外部配置
+if [ $# -lt 1 ]; then
+    echo -e "${RED}Usage: $0 <config_file>${NC}"
+    exit 1
 fi
 
-# Perplexity
-echo ">>> $(date "+[%-m-%d-%H:%M:%S]") [Perplexity] >>>"
-python -m src.perplexity \
---num-workers $NUM_DEVICES \
---sequence-file $EVAL_DIR/designed.json \
---evaluation-file $EVAL_DIR/perplexity.json
+cd /nas/data/jhkuang/projects/PDFBench_related/PDFBench
+source "$1"  # 加载 region 配置
 
-# Retrieval Accuracy
-echo ">>> $(date "+[%-m-%d-%H:%M:%S]") [Retrieval Accuracy] >>>"
-python -m src.retrieval_accuracy \
---sequence-file ${EVAL_DIR}/designed.json \
---evaluation-file ${EVAL_DIR}/retrieval_accuracy.json \
---model_path ${PROTREK} \
---task ${TASK} \
---num-workers ${NUM_DEVICES}
+for config_path in "${config_paths[@]}"; do
+    echo -e "${BLUE}Processing config:${NC} $config_path"
+    full_config_path="$config_root/$config_path"
+    
+    if [ ! -f "$full_config_path" ]; then
+        echo -e "${RED}❌ Error: Config file $full_config_path does not exist!${NC}"
+        continue
+    fi
+    
+    echo -e "${YELLOW}Starting evaluation...${NC}"
+    ${handler} -m src.eval --config "$full_config_path"
+    
+    if [ $? -eq 0 ]; then
+        echo -e "${CYAN} >>>${NC} ${GREEN}Successfully processed: $config_path 🎉${NC}"
+    else
+        echo -e "${RED} >>>${NC} ${RED}Error occurred while processing: $config_path ❌${NC}"
+    fi
+    
+    echo -e "${BLUE}----------------------------------------${NC}"
+done
 
-# Bert-like
-echo ">>> $(date "+[%-m-%d-%H:%M:%S]") [Bert-like] >>>"
-python -m src.bertlike \
---num-workers $NUM_DEVICES \
---sequence-file $EVAL_DIR/designed.json \
---evaluation-file $EVAL_DIR/bertlike.json
-
-# Foldability
-echo ">>> $(date "+[%-m-%d-%H:%M:%S]") [Foldability] >>>"
-python -m src.foldability \
---num-workers ${NUM_DEVICES} \
---sequence-file ${EVAL_DIR}/designed.json \
---esmfold-path ${ESMFOLD} \
---evaluation-file ${EVAL_DIR}/foldability.json \
---output-pdb-dir ${EVAL_DIR}/pdb_esmfold_v1
-
-# Language Alignment
-echo ">>> $(date "+[%-m-%d-%H:%M:%S]") [Language Alignment] >>>"
-python -m src.language_alignment \
---num-workers ${NUM_DEVICES} \
---sequence-file ${EVAL_DIR}/designed.json \
---evaluation-file ${EVAL_DIR}/language_alignment.json \
---task ${TASK} \
---use-structure False \
---use-sequence True \
---pdb-dir ${EVAL_DIR}/pdb_esmfold_v1 \
---protrek-path ${PROTREK} \
---evollama-path ${EVOLLAMA} \
---llm-path ${LLAMA}
-
-# Novelty
-echo ">>> $(date "+[%-m-%d-%H:%M:%S]") [Novelty] >>>"
-python -m src.novelty \
---sequence-file ${EVAL_DIR}/designed.json \
---evaluation-file ${EVAL_DIR}/novelty.json \
---mmseqs_path ${MMSEQS_EX} \
---database_path ${MMSEQS_DB} \
---num-workers ${NUM_DEVICES}
-# endregion GPU
-
-# region 2.2.NO GPU
-# Repetitiveness
-echo ">>> $(date "+[%-m-%d-%H:%M:%S]") [Repetitiveness] >>>"
-python -m src.repetitiveness \
---num-workers ${NUM_WORKERS} \
---sequence-file ${EVAL_DIR}/designed.json \
---evaluation-file ${EVAL_DIR}/repetitiveness.json
-
-# Keyword Recovery
-echo ">>> $(date "+[%-m-%d-%H:%M:%S]") [Keyword Recovery] >>>"
-python -m src.keyword_recovery \
---num-workers ${NUM_WORKERS_INTERPRO} \
---sequence-file ${EVAL_DIR}/designed.json \
---evaluation-file ${EVAL_DIR}/keyword_recovery.json \
---workers_per_scan ${WORKERS_PER_INTERPRO} \
---interpro_scan_path ${INTERPRO_SCAN_EX}
-
-# TMscore
-echo ">>> $(date "+[%-m-%d-%H:%M:%S]") [TMscore] >>>"
-python -m src.tm_score \
---num-workers ${NUM_WORKERS} \
---sequence-file ${EVAL_DIR}/designed.json \
---evaluation-file ${EVAL_DIR}/tm_score.json \
---output_pdb_dir ${EVAL_DIR}/pdb_esmfold_v1 \
---tm_score_path ${TM_SCORE_EX}
-
-# Identity
-echo ">>> $(date "+[%-m-%d-%H:%M:%S]") [Identity] >>>"
-python -m src.identity \
---num-workers ${NUM_WORKERS} \
---sequence-file ${EVAL_DIR}/designed.json \
---evaluation-file ${EVAL_DIR}/identity.json \
---mmseqs_path ${MMSEQS_EX}
-# endregion no-gpu
-
-# endregion 2.Evaluation
+feishu_msg --msg "${config_paths[*]}" --title "PDFBench-${task_name}"

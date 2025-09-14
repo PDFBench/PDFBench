@@ -14,7 +14,7 @@ class BasicArguments:
     log_dir: str = "logs"
     verbose: bool = True
     visualize: bool = False  # FIXME: NAME
-    visual_name: str = "results.csv"
+    visual_name: str = "results"
     num_gpu: int = -1
     num_cpu: int = -1
     speed_up: bool = False

@@ -64,7 +64,9 @@ def compute_foldability(
         max_length=1024,
     )["input_ids"].to(model.device)
     pae_scores = []
-    with torch.no_grad():
+    with (
+        torch.no_grad()
+    ):  # TODO: torch.cuda.empty_cache() and torch.inference_mode()
         output = model(input_ids)
         pae_scores.append(get_pae(output))
 
@@ -143,12 +145,20 @@ def foldability_evaluate_worker(
         }
         for b in range(1, design_batch_size + 1):
             res.update({f"response#{b}": item[f"response#{b}"]})
-            tmp = compute_foldability(
-                tokenizer,
-                model,
-                [item[f"response#{b}"]],
-                pdb_cache_dir,
-            )[0]
+
+            try:
+                tmp = compute_foldability(
+                    tokenizer,
+                    model,
+                    [item[f"response#{b}"]],
+                    pdb_cache_dir,
+                )[0]
+            except Exception:
+                tmp = {
+                    "pdb_file_name": "None",
+                    "pLDDT": float("nan"),
+                    "pAE": float("nan"),
+                }
             pdb_file_name, plddt, pae = (
                 tmp["pdb_file_name"],
                 tmp["pLDDT"],
@@ -176,6 +186,42 @@ class FoldabilityMetric(BaseMetric):
     @property
     def metrics(self) -> list[str]:
         return ["pLDDT", "pLDDT>70", "pAE", "pAE<10"]
+
+    def summary(self, results) -> dict:
+        bs = self.design_batch_size
+        if bs == 1:
+            return {
+                "pLDDT": results["pLDDT#1"].mean() * 100,
+                "pLDDT>70": (results["pLDDT#1"] > 0.7).mean() * 100,
+                "pAE": results["pAE#1"].mean(),
+                "pAE<10": (results["pAE#1"] < 10).mean() * 100,
+            }
+        else:
+            plddt = [
+                results[f"pLDDT#{b}"].mean() * 100 for b in range(1, bs + 1)
+            ]
+            plddt_gt_70 = [
+                (results[f"pLDDT#{b}"] > 0.7).mean() * 100
+                for b in range(1, bs + 1)
+            ]
+            pae = [results[f"pAE#{b}"].mean() for b in range(1, bs + 1)]
+            pae_lt_10 = [
+                (results[f"pAE#{b}"] < 10).mean() * 100
+                for b in range(1, bs + 1)
+            ]
+            return {
+                "pLDDT": np.mean(plddt),
+                **{f"pLDDT#{b}": plddt[b - 1] for b in range(1, bs + 1)},
+                "pLDDT>70": np.mean(plddt_gt_70),
+                **{
+                    f"pLDDT>70#{b}": plddt_gt_70[b - 1]
+                    for b in range(1, bs + 1)
+                },
+                "pAE": np.mean(pae),
+                **{f"pAE#{b}": pae[b - 1] for b in range(1, bs + 1)},
+                "pAE<10": np.mean(pae_lt_10),
+                **{f"pAE<10#{b}": pae_lt_10[b - 1] for b in range(1, bs + 1)},
+            }
 
 
 class FoldabilityEvaluator(BaseEvaluator):

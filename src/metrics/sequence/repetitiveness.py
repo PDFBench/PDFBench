@@ -1,5 +1,6 @@
 import multiprocessing as mp
 
+import numpy as np
 from tqdm.auto import tqdm
 
 from src.configs.sequence_args import Repeat_Algorithm
@@ -66,7 +67,7 @@ def compute_repeat(sequence: str) -> float:
 
 
 def compute_repeatN(sequence: str, n: int):
-    if len(sequence) == n:
+    if len(sequence) <= n:
         return 0.0
 
     indeps = set()
@@ -139,6 +140,38 @@ class RepetitivenessMetric(BaseMetric):
         if Repeat_Algorithm.Repeat.name in self.compute_methods:
             _metrics.append("repeat")
         return _metrics
+
+    def summary(self, results) -> dict:
+        bs = self.design_batch_size
+        if bs == 1:
+            return {
+                "repeat": results["repeat#1"].mean() * 100,
+                **{
+                    f"rep{n}": results[f"rep{n}#1"].mean() * 100
+                    for n in self.RepN
+                },
+            }
+        else:
+            repeats = [
+                results[f"repeat#{b}"].mean() * 100 for b in range(1, bs + 1)
+            ]
+            repns = [
+                [results[f"rep{n}#{b}"].mean() * 100 for b in range(1, bs + 1)]
+                for n in self.RepN
+            ]
+
+            out = {
+                "repeat": np.mean(repeats),
+                **{f"repeat#{b}": repeats[b - 1] for b in range(1, bs + 1)},
+            }
+
+            for idx, n in enumerate(self.RepN):
+                out[f"rep{n}"] = np.mean(repns[idx])
+                out.update(
+                    {f"rep{n}#{b}": repns[idx][b - 1] for b in range(1, bs + 1)}
+                )
+
+            return out
 
 
 class RepetitivenessEvaluator(BaseEvaluator):

@@ -7,7 +7,8 @@ import simple_parsing
 
 from .alignment_args import (
     EvoLlamaScoreArguments,
-    KeywordRecoveryArguments,
+    GOScoreArguments,
+    IPRScoreArguments,
     ProTrekScoreArguments,
     RetrievalAccuracyArguments,
 )
@@ -57,7 +58,8 @@ class EvaluationArgs(Args):
     # Language Alignment
     protrek_score: ProTrekScoreArguments
     evollama_score: EvoLlamaScoreArguments
-    keyword_rec: KeywordRecoveryArguments
+    ipr_score: IPRScoreArguments
+    go_score: GOScoreArguments
     retrievl_acc: RetrievalAccuracyArguments
     # Others
     novelty: NoveltyArguments
