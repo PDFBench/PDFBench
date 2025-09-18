@@ -20,6 +20,9 @@ __all__ = [
 ]
 
 
+from typing import TYPE_CHECKING
+
+
 def __getattr__(name: str):
     # base
     if name == "BaseEvaluator":
@@ -123,3 +126,40 @@ def __getattr__(name: str):
 
     raise AttributeError(f"module 'src.metrics' has no attribute '{name}'")
 # fmt: on
+
+
+if TYPE_CHECKING:
+    from .alignment.evollama_score import (
+        EvoLlamaScoreEvaluator,
+        EvoLlamaScoreMetric,
+    )
+    from .alignment.go_score import GOScoreEvaluator, GOScoreMetric
+    from .alignment.ipr_score import IPRScoreEvaluator, IPRScoreMetric
+
+    # alignment
+    from .alignment.protrek_score import (
+        ProTrekScoreEvaluator,
+        ProTrekScoreMetric,
+    )
+    from .alignment.retrieval_accuracy import (
+        RetrievalAccuracyEvaluator,
+        RetrievalAccuracyMetric,
+    )
+    from .metric import BaseEvaluator, BaseMetric, EvaluationOutput, MetricList
+
+    # others
+    from .others.diversity import DiversityEvaluator, DiversityMetric
+    from .others.novelty import NoveltyEvaluator, NoveltyMetric
+
+    # sequence
+    from .sequence.bert_score import BertScoreEvaluator, BertScoreMetric
+    from .sequence.identity import IdentityEvaluator, IdentityMetric
+    from .sequence.perplexity import PerplexityEvaluator, PerplexityMetric
+    from .sequence.repetitiveness import (
+        RepetitivenessEvaluator,
+        RepetitivenessMetric,
+    )
+
+    # structure
+    from .structure.foldability import FoldabilityEvaluator, FoldabilityMetric
+    from .structure.tm_score import TMScoreEvaluator, TMScoreMetric

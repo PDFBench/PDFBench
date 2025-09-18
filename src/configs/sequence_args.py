@@ -84,7 +84,7 @@ class BertScoreArguments:
     speed_up: bool = False
     compute_models: tuple[BertModel, ...] = (BertModel.ESM2,)
     esm2_name_or_path: str = "facebook/esm2_t33_650M_UR50D"
-    esm2_batch_size: int = 64
+    esm2_batch_size: int = 32
 
     def __post_init__(self):
         if not self.run:

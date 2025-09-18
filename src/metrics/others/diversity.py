@@ -194,7 +194,7 @@ def compute_sequence_diversity(
             temp_folder,
         )
         if res.returncode != 0:
-            warnings.warn("mmseqs easy-search failed with {sequences}")
+            warnings.warn(f"mmseqs easy-search failed with {sequences}")
             return np.nan
         diversity = process_m8_file(result_m8_file, n_prot=len(sequences))
 
@@ -258,19 +258,30 @@ def diversity_evaluate_worker(
             item[f"response#{b}"] for b in range(1, design_batch_size + 1)
         ]
 
+        try:
+            seq_div = compute_sequence_diversity(
+                sequences=responses,
+                mmseqs_path=mmseqs_ex_path,
+            )
+        except Exception:
+            # warnings.warn(f"Diversity Error with {e}")    # TODO: Error Logging
+            seq_div = float("nan")
+
+        try:
+            struc_div = compute_structure_diversity(
+                sequences=responses,
+                pdb_cache_dir=pdb_cache_dir,
+                tm_score_path=tm_score_ex_path,
+                model=model,
+                tokenizer=tokenizer,
+            )
+        except Exception:
+            # warnings.warn(f"Diversity Error with {e}")    # TODO: Error Logging
+            struc_div = float("nan")
         res.update(
             {
-                "sequence_diversity": compute_sequence_diversity(
-                    sequences=responses,
-                    mmseqs_path=mmseqs_ex_path,
-                ),
-                "structure_diversity": compute_structure_diversity(
-                    sequences=responses,
-                    pdb_cache_dir=pdb_cache_dir,
-                    tm_score_path=tm_score_ex_path,
-                    model=model,
-                    tokenizer=tokenizer,
-                ),
+                "sequence_diversity": seq_div,
+                "structure_diversity": struc_div,
             }
         )
 
