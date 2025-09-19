@@ -233,7 +233,7 @@ def compute_sequence_novelty(
             seq2seqNov[seq_to_md5(seq)] = (
                 noveltyH,
                 noveltyE,
-                [] if novelties.empty else novelties.to_list(),
+                [] if query_matches.empty else novelties.to_list(),
             )
 
         return seq2seqNov
@@ -313,7 +313,7 @@ def novelty_evaluate_worker(
                 res[f"Novelties(Seq)#{b}"] = novelties
 
             if Novelty.Structure.name in compute_novelties:
-                if md5seq not in seq2struc_novelty:
+                if md5seq in seq2struc_novelty:
                     noveltyH, noveltyE, novelties = seq2struc_novelty[md5seq]
                 else:
                     noveltyH, noveltyE, novelties = 1.0, 1.0, []

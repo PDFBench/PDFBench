@@ -1,7 +1,12 @@
-## Repository for PDFBench: A Benchmark for De novo Protein Design from Function
+## PDFBench: A Benchmark for De novo Protein Design from Function
 The paper can be viewed on the homepage: https://pdfbench.github.io/
 
+TODO: Pictures
+
+---
+
 ### 1. Environment
+
 ```shell
 # PDFBench env
 conda create -n PDF python=3.10
@@ -14,49 +19,64 @@ conda activate PDF-DeepGO
 bash scripts/environments/DeepGO.sh
 ```
 
+Note: **PDFBench** conflicts with the environment requirements of the submodule `deepgo2`, so an additional conda environment must be created and specified in the configuration file.
+
+---
+
 ### 2. Preparation
 
 #### 2.1. ProTrek and EvoLlama
 
-Download repository for both [ProTrek](https://github.com/westlake-repl/ProTrek) and [EvoLlama](https://github.com/sornkL/EvoLlama) into `src` folder, and download the [ProTrek-650M weights](https://huggingface.co/westlake-repl/ProTrek_650M_UniRef50) and [EvoLlama weights](https://huggingface.co/nwliu/EvoLlama-Oracle-Molinst-Protein-Design) following their guidelines.
+Download the [ProTrek-650M weights](https://huggingface.co/westlake-repl/ProTrek_650M_UniRef50) and [EvoLlama weights](https://huggingface.co/nwliu/EvoLlama-Oracle-Molinst-Protein-Design) following their guidelines.
+
+```shell
+# We are at the root of PDFBench repository.
+huggingface-cli download westlake-repl/ProTrek_650M \
+                         --repo-type model \
+                         --local-dir weights/ProTrek_650M
+huggingface-cli download nwliu/EvoLlama \
+                         --repo-type model \
+                         --local-dir weights/EvoLlama
+```
+The path to **ProTrek weight** is `weights/ProTrek_650M`, **EvoLlama weight** is `weights/EvoLlama`. 
 
 #### 2.2. TMscore
 Download TMscore following the [ZhangGroup](https://zhanggroup.org/TM-score/). According to the guidance, your directory may look like:
 ```shell
-cd /path/to/TMscore
-tree . -L 1
-├── TMscore # Executable file of TMscore, it will be used later.
-└── TMscore.cpp
+# We are at the root of PDFBench repository.
+cd tools/TMScore
+wget https://zhanggroup.org/TM-score/TMscore.cpp
+g++ -static -O3 -ffast-math -lm -o ./TMscore ./TMscore.cpp
+
+# **Expected Result**
+# tree . -L 1
+# ├── TMscore # Executable file of TMscore, it will be used later.
+# └── TMscore.cpp
 ```
-The path to **TMscore** executable file is `/path/to/TMscore/TMscore`. 
+The path to **TMscore** executable file is `tools/TMScore/TMscore`. 
 
 #### 2.3. InterProScan
-InterProScan needs Java11!
+> InterProScan needs Java11.
 ```shell
-cd /path/to/interproscan
+cd tools/InterProScan
 wget http://ftp.ebi.ac.uk/pub/software/unix/iprscan/5/5.74.105/interproscan-5.74.105-64-bit.tar.gz
 tar -zxvf ./interproscan-5.74.105-64-bit.tar.gz
 ```
-The path to **InterProScan** executable file is `/path/to/interproscan/interproscan-5.73-105-64/interproscan.sh`. 
+The path to **InterProScan** executable file is `tools/InterProScan/interproscan-5.73-105-64/interproscan.sh`. 
 
 #### 2.4. MMseqs2 and its database
-Download MMseqs2 following the [tutorial](https://github.com/soedinglab/MMseqs2).According to the guidance, your directory may look like:
+Download MMseqs2 following the [tutorial](https://github.com/soedinglab/MMseqs2). We highly recommend you to download its **GPU-advanced version** as follows:
 ```shell
-cd /path/to/mmseqs
-tree . -L 2
-├── bin
-│   └── mmseqs  # Execuatable file of MMSeqs2
-├── examples
-├── LICENSE.md
-├── matrices
-├── README.md
-├── userguide.pdf
-└── util
+cd tools/mmseqs
+wget https://mmseqs.com/latest/mmseqs-linux-gpu.tar.gz
+tar xvfz mmseqs-linux-gpu.tar.gz
+rm -f ./mmseqs-linux-gpu.tar.gz
+
 ```
-The path to executable file of **MMSeqs2** is `/path/to/mmseqs/bin/mmseqs`.
+The path to executable file of **MMSeqs2** is `tools/mmseqs/mmseqs/bin/mmseqs`.
+
 ```shell
-cd /path/to/mmseqs
-mkdir DB && cd DB
+mkdir db && cd db
 
 # Downloading UniProtKB/SwissProt (~400M)
 wget https://ftp.uniprot.org/pub/databases/uniprot/knowledgebase/complete/uniprot_sprot.fasta.gz
@@ -75,11 +95,38 @@ mmseqs makepaddedseqdb ./uniprotdb ./uniprotdb_gpu
 # Craeating indexes for searching acceleration. (tens of hours)
 mmseqs createindex ./uniprotdb_gpu tmp --index-subset 2
 ```
-The path to **MMSeqs DB** is `/path/to/mmseqs/DB/uniprotdb` or `/path/to/mmseqs/DB/uniprotdb_gpu`.
+The path to **MMSeqs DB** is `tools/mmseqs/db/uniprotdb_gpu`.
 **Warning:** The searching DB bulit from UniProtKB takes up about **500 GB** of disk space and runs for tens of hours, and it takes nearly **1 hour** to complete the searching of one single sequence if no GPU acceleration!
 
-#### 2.5. ESMFold
-Download ESMFold from [huggingface](https://huggingface.co/facebook/esmfold_v1), and the path to ESMFold weights is `/path/to/esmfold/weights/folder`
+#### 2.5. Foldseek and its database
+Download Foldseek following the [tutorial](https://github.com/steineggerlab/foldseek). Again, we highly recommend you to download its **GPU-advanced version** as follows:
+```shell
+cd tools/foldseek
+# Requirement: Linux AVX2 & GPU build (req. glibc >= 2.17 and nvidia driver >=525.60.13)
+# Desk maximum usage: ~1.2G
+wget https://mmseqs.com/foldseek/foldseek-linux-gpu.tar.gz
+tar xvfz foldseek-linux-gpu.tar.gz
+rm -f ./foldseek-linux-gpu.tar.gz
+```
+
+The path to executable file of **MMSeqs2** is `tools/foldseek/foldseek/bin/foldseek`.
+
+```shell
+mkdir db && cd db
+mkdir tmp
+
+# Downloading AlphafoldDB/SwissProt (~27G)
+wget https://ftp.ebi.ac.uk/pub/databases/alphafold/latest/swissprot_pdb_v4.tar
+tar -xf swissprot_pdb_v4.tar -C ./Alphafold_SwissProt
+rm -f ./swissprot_pdb_v4.tar
+
+# Create Foldseek Database
+foldseek createdb ./Alphafold_SwissProt ./Alphafold_SwissProt_CPU/AlphaSwissC
+foldseek makepaddedseqdb ./Alphafold_SwissProt_CPU/AlphaSwissC ./Alphafold_SwissProt_GPU/AlphaSwissG
+foldseek createindex ./Alphafold_SwissProt_GPU/AlphaSwissG ./tmp
+```
+The path to **Foldseek DB** is `tools/foldseek/db/Alphafold_SwissProt_GPU/AlphaSwissG`.
+**Warning:** The searching DB bulit from AlphafoldDB/SwissProt takes up about **500 GB** of disk space and runs for tens of hours, and it takes nearly **1 hour** to complete the searching of one single sequence if no GPU acceleration!s
 
 #### 2.6. Modify your function-parser
 See `src/utils.py`, we provide two parsers for Mol-Instructions and CAMEOTest as follows,

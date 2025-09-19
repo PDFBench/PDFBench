@@ -188,4 +188,11 @@ test/
 
 configs/
 
+# NFS cache files
 .nfs*
+
+# tools
+tools/mmseqs/*
+tools/TMScore/*
+tools/interproscan/*
+tools/foldseek/*
