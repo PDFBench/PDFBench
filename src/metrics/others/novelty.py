@@ -3,7 +3,6 @@ import os
 import shutil
 import subprocess
 import tempfile
-import warnings
 from datetime import datetime
 from typing import Tuple
 
@@ -26,22 +25,31 @@ def compute_structure_novelty(
     threads: int,
 ) -> dict[str, Tuple[float, float, list[float]]]:
     with tempfile.TemporaryDirectory() as temp_folder:
+        # Prepare Folders
+        # query
         query_folder = os.path.join(temp_folder, "query")
         os.mkdir(query_folder)
         query_pdb_folder = os.path.join(query_folder, "pdbs")
         os.mkdir(query_pdb_folder)
         query_db = os.path.join(query_folder, "query")
+        # output
         output_folder = os.path.join(temp_folder, "output")
         os.mkdir(output_folder)
         output_db = os.path.join(output_folder, "output")
         results_file = os.path.join(output_folder, "result.tsv")
 
+        seq2strucnov = {}
         # move pdbs to query_folder
         for seq in sequences:
-            shutil.copyfile(
-                os.path.join(pdb_cache_dir, f"{seq_to_md5(seq)}.pdb"),
-                os.path.join(query_pdb_folder, f"{seq_to_md5(seq)}.pdb"),
-            )
+            if os.path.exists(
+                os.path.join(pdb_cache_dir, f"{seq_to_md5(seq)}.pdb")
+            ):
+                shutil.copyfile(
+                    os.path.join(pdb_cache_dir, f"{seq_to_md5(seq)}.pdb"),
+                    os.path.join(query_pdb_folder, f"{seq_to_md5(seq)}.pdb"),
+                )
+            else:
+                seq2strucnov[seq_to_md5(seq)] = float("nan"), float("nan"), []
 
         # region foldseek search
         # create query db
@@ -106,7 +114,6 @@ def compute_structure_novelty(
         # endregion
 
         # process result
-        seq2strucnov = {}
         matches = pd.read_csv(results_file, sep="\t", header=None)
         matches.columns = ["Query", "TMScore"]
         for seq in sequences:
@@ -126,122 +133,6 @@ def compute_structure_novelty(
             )
 
         return seq2strucnov
-
-
-def _compute_sequence_novelty(
-    sequence: str,
-    database_path: str,
-    mmseqs_path: str,
-    workers_per_mmseqs: int,
-) -> float:
-    """
-    compute novelty using mmseq2, modified from [PAAG](https://github.com/chaohaoyuan/PAAG/tree/main/evaluation/unconditional/novelty)
-
-    :param str sequence: protein sequence used to compute novelty
-    :param str temp_folder: folder reserved for temporary files
-    :param str database_path: path to dataset used by mmseq2
-    :param str mmseqs_path: path to mmseq2 executable
-    :return float: novelty of the sequence
-    """
-
-    def process_m8_file(file_path, n_prot=300):
-        max_similarity = {}
-        with open(file_path, "r") as file:
-            for line in file:
-                parts = line.strip().split("\t")
-                if len(parts) < 3:
-                    continue
-                query_id = parts[0]
-                similarity = float(parts[2])
-
-                if query_id not in max_similarity:
-                    max_similarity[query_id] = similarity
-                else:
-                    max_similarity[query_id] = max(
-                        max_similarity[query_id], similarity
-                    )
-
-        # hit
-        hits = 0
-        for similarity in max_similarity.values():
-            hits += 1 - similarity
-        # dismiss
-        dismisses = (n_prot - len(max_similarity)) * 1.0
-        novelty = (hits + dismisses) / n_prot
-
-        return novelty
-
-    def mmseqs_search():
-        # sequence to fasta
-        with open(temp_fasta_file, "w") as f:
-            fasta_sequence = "\n".join(
-                [sequence[_ : _ + 60] for _ in range(0, len(sequence), 60)]
-            )
-            f.write(f">temp\n{fasta_sequence}\n")
-
-        # fasta to db
-        cmd = [
-            mmseqs_path,
-            "createdb",
-            temp_fasta_file,
-            temp_db_file,
-            "--dbtype",
-            "1",
-            "-v",
-            "1",
-        ]
-        res = subprocess.run(cmd)
-        if res.returncode != 0:
-            raise RuntimeError("mmseqs creadb failed")
-
-        # mmseqs search
-        cmd = [
-            mmseqs_path,
-            "search",
-            temp_db_file,
-            database_path,
-            temp_output_file,
-            temp_folder,
-            "--gpu",
-            "1",
-            "--max-seqs",
-            "300",
-            "-v",
-            "1",
-            "--threads",
-            f"{workers_per_mmseqs}",
-            "-e",
-            "100",
-        ]
-        res = subprocess.run(cmd)
-
-        return res
-
-    with tempfile.TemporaryDirectory() as temp_folder:
-        temp_fasta_file = os.path.join(temp_folder, "temp.fasta")
-        temp_db_file = os.path.join(temp_folder, "temp")
-        temp_output_file = os.path.join(temp_folder, "temp.m8")
-
-        error_times = 0
-        error_message = ""
-        while error_times < 3:
-            try:
-                mmseqs_search()
-                novelty = process_m8_file(temp_output_file, 300)
-                break
-            except FileNotFoundError:
-                warnings.warn("Sequence is too strage to search *_*")
-                novelty = 1.0
-                break
-            except Exception as e:
-                error_message = str(e)
-            finally:
-                error_times += 1
-        else:
-            novelty = 1.0
-            warnings.warn(error_message)
-
-    return novelty
 
 
 def compute_sequence_novelty(
@@ -342,75 +233,10 @@ def compute_sequence_novelty(
             seq2seqNov[seq_to_md5(seq)] = (
                 noveltyH,
                 noveltyE,
-                novelties.to_list(),
+                [] if novelties.empty else novelties.to_list(),
             )
 
         return seq2seqNov
-
-
-def _novelty_evaluate_worker(
-    queue: mp.Queue,
-    pid: int,
-    subset: list,
-    design_batch_size: int,
-    novelties: list[Novelty],
-    mmseqs_ex_path: str,
-    worker_per_mmseqs: int,
-    database_path: str,
-    devices: list,
-) -> None:
-    if (
-        design_batch_size is None
-        or novelties is None
-        or mmseqs_ex_path is None
-        or worker_per_mmseqs is None
-        or database_path is None
-        or devices is None
-    ):
-        raise ValueError(
-            "Invalid kwargs: \n"
-            f"design_batch_size: {design_batch_size}\n"
-            f"novelties: {novelties}\n"
-            f"mmseqs_ex_path: {mmseqs_ex_path}\n"
-            f"worker_per_mmseqs: {worker_per_mmseqs}\n"
-            f"database_path: {database_path}\n"
-            f"devices: {devices}"
-        )
-
-    # set the cuda device, enable multi-gpu for mmseqs2
-    os.environ["CUDA_VISIBLE_DEVICES"] = f"{devices[pid]}"
-
-    results = []
-    for idx, item in enumerate(
-        tqdm(
-            subset,
-            desc=f"Process{pid + 1}: Novelty",
-            ncols=100,
-            position=pid,
-        )
-    ):
-        res = {
-            "instruction": item["instruction"],
-            "reference": item["reference"],
-            **{
-                f"response#{b}": item[f"response#{b}"]
-                for b in range(1, design_batch_size + 1)
-            },
-        }
-        for b in range(1, design_batch_size + 1):
-            # res[f"Novelty(Seq)#{b}"] = compute_sequence_novelty(
-            #     sequence=item[f"response#{b}"],
-            #     mmseqs_path=mmseqs_ex_path,
-            #     workers_per_mmseqs=worker_per_mmseqs,
-            #     database_path=database_path,
-            # )
-            pass
-        results.append(res)
-
-    # reset the cuda device
-    os.environ["CUDA_VISIBLE_DEVICES"] = ",".join(devices)
-
-    queue.put((pid, results))
 
 
 def novelty_evaluate_worker(
@@ -450,7 +276,7 @@ def novelty_evaluate_worker(
         print(f"Compute Structural Novelty for {len(sequences)} sequences")
         seq2struc_novelty = compute_structure_novelty(
             sequences=sequences,
-            pdb_cache_dir="/home/jhkuang/data/cache/dynamsa/eval/.cache/pdb_cache_dir",
+            pdb_cache_dir=pdb_cache_dir,
             target_db=foldseek_targetdb_path,
             foldseek_path=foldseek_ex_path,
             threads=worker_per_foldseek,
@@ -476,17 +302,21 @@ def novelty_evaluate_worker(
         }
 
         for b in range(1, design_batch_size + 1):
+            md5seq = seq_to_md5(item[f"response#{b}"])
             if Novelty.Sequence.name in compute_novelties:
-                noveltyH, noveltyE, novelties = seq2seq_novelty[
-                    seq_to_md5(item[f"response#{b}"])
-                ]
+                if md5seq in seq2seq_novelty:
+                    noveltyH, noveltyE, novelties = seq2seq_novelty[md5seq]
+                else:
+                    noveltyH, noveltyE, novelties = 1.0, 1.0, []
                 res[f"Novelty-Hard(Seq)#{b}"] = noveltyH
                 res[f"Novelty-Easy(Seq)#{b}"] = noveltyE
                 res[f"Novelties(Seq)#{b}"] = novelties
+
             if Novelty.Structure.name in compute_novelties:
-                noveltyH, noveltyE, novelties = seq2struc_novelty[
-                    seq_to_md5(item[f"response#{b}"])
-                ]
+                if md5seq not in seq2struc_novelty:
+                    noveltyH, noveltyE, novelties = seq2struc_novelty[md5seq]
+                else:
+                    noveltyH, noveltyE, novelties = 1.0, 1.0, []
                 res[f"Novelty-Hard(Struc)#{b}"] = noveltyH
                 res[f"Novelty-Easy(Struc)#{b}"] = noveltyE
                 res[f"Novelties(Struc)#{b}"] = novelties
