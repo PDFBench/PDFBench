@@ -1,3 +1,5 @@
+#!/bin/bash
+
 # PDFBench requirement
 conda install pytorch::faiss-gpu=1.8.0 --yes
 pip install torch

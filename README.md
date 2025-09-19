@@ -3,20 +3,15 @@ The paper can be viewed on the homepage: https://pdfbench.github.io/
 
 ### 1. Environment
 ```shell
+# PDFBench env
 conda create -n PDF python=3.10
 conda activate PDF
+bash scripts/environments/PDF.sh
 
-conda install pytorch::faiss-gpu=1.8.0 --yes
-
-pip install torch
-pip install transformers
-pip install accelerate
-pip install esm
-pip install simple_parsing
-
-pip install httpx
-pip install torchmetrics==0.9.3
-pip install pytorch-lightning==2.1.3
+# DeepGo env
+conda activate -n PDF-DeepGO python-3.10
+conda activate PDF-DeepGO
+bash scripts/environments/DeepGO.sh
 ```
 
 ### 2. Preparation
