@@ -187,3 +187,5 @@ test/
 **/.vscode/
 
 configs/
+
+.nfs*
