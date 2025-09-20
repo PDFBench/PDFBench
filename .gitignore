@@ -187,3 +187,8 @@ test/
 **/.vscode/
 
 configs/
+
+tools/mmseqs/*
+tools/interproscan/*
+tools/foldseek/*
+tools/TMScore/*
