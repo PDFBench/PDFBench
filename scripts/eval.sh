@@ -1,4 +1,7 @@
 #!/bin/bash
+export HF_DATASETS_OFFLINE=1 HF_EVALUATE_OFFLINE=1
+export TOKENIZERS_PARALLELISM=false
+
 handler=/home/jhkuang/.conda/envs/PDF/bin/python
 config_root=/nas/data/jhkuang/projects/PDFBench_related/PDFBench/configs
 # 颜色定义
@@ -35,7 +38,7 @@ for config_path in "${config_paths[@]}"; do
         echo -e "${CYAN} >>>${NC} ${GREEN}Successfully processed: $config_path 🎉${NC}"
     else
         echo -e "${RED} >>>${NC} ${RED}Error occurred while processing: $config_path ❌${NC}"
-    fi
+    fi  
     
     echo -e "${BLUE}----------------------------------------${NC}"
 done

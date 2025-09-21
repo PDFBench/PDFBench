@@ -38,7 +38,7 @@ def compute_structure_novelty(
         output_db = os.path.join(output_folder, "output")
         results_file = os.path.join(output_folder, "result.tsv")
 
-        seq2strucnov = {}
+        seq2structNov = {}
         # move pdbs to query_folder
         for seq in sequences:
             if os.path.exists(
@@ -49,7 +49,7 @@ def compute_structure_novelty(
                     os.path.join(query_pdb_folder, f"{seq_to_md5(seq)}.pdb"),
                 )
             else:
-                seq2strucnov[seq_to_md5(seq)] = float("nan"), float("nan"), []
+                seq2structNov[seq_to_md5(seq)] = float("nan"), float("nan"), []
 
         # region foldseek search
         # create query db
@@ -116,23 +116,20 @@ def compute_structure_novelty(
         # process result
         matches = pd.read_csv(results_file, sep="\t", header=None)
         matches.columns = ["Query", "TMScore"]
+        # NoveltyH, NoveltyE, Novelties
         for seq in sequences:
             query_matches = matches[matches["Query"] == seq_to_md5(seq)]
             if query_matches.empty:
-                noveltyH, noveltyE = 1.0, 1.0
+                seq2structNov[seq_to_md5(seq)] = (1.0, 1.0, [])
             else:
                 novelties = query_matches["TMScore"].map(lambda x: 1 - x)
-                noveltyH, noveltyE = (
+                seq2structNov[seq_to_md5(seq)] = (
                     novelties.min(),
                     ((300 - len(novelties)) * 1.0 + novelties.sum()) / 300,
+                    novelties.to_list(),
                 )
-            seq2strucnov[seq_to_md5(seq)] = (
-                noveltyH,
-                noveltyE,
-                novelties.to_list(),
-            )
 
-        return seq2strucnov
+        return seq2structNov
 
 
 def compute_sequence_novelty(
@@ -222,19 +219,16 @@ def compute_sequence_novelty(
         matches.columns = ["Query", "Identity"]
         for seq in sequences:
             query_matches = matches[matches["Query"] == seq_to_md5(seq)]
+            # NoveltyH, NoveltyE, Novelties
             if query_matches.empty:
-                noveltyH, noveltyE = 1.0, 1.0
+                seq2seqNov[seq_to_md5(seq)] = (1.0, 1.0, [])
             else:
                 novelties = query_matches["Identity"].map(lambda x: 1 - x)
-                noveltyH, noveltyE = (
+                seq2seqNov[seq_to_md5(seq)] = (
                     novelties.min(),
                     ((300 - len(novelties)) * 1.0 + novelties.sum()) / 300,
+                    novelties.to_list(),
                 )
-            seq2seqNov[seq_to_md5(seq)] = (
-                noveltyH,
-                noveltyE,
-                [] if novelties.empty else novelties.to_list(),
-            )
 
         return seq2seqNov
 
@@ -262,9 +256,18 @@ def novelty_evaluate_worker(
             ]
         )
     )
+    print(
+        ">>>",
+        datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        " - ",
+        "Starting Novelty Calculation",
+        ">>>",
+    )
     if Novelty.Sequence.name in compute_novelties:
-        print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-        print(f"Compute Seqeuncial Novelty for {len(sequences)} sequences")
+        print(
+            f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}]",
+            f"Compute Sequential Novelty for {len(sequences)} sequences",
+        )
         seq2seq_novelty = compute_sequence_novelty(
             sequences=sequences,
             mmseqs_path=mmseqs_ex_path,
@@ -272,8 +275,10 @@ def novelty_evaluate_worker(
             threads=worker_per_mmseqs,
         )
     if Novelty.Structure.name in compute_novelties:
-        print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-        print(f"Compute Structural Novelty for {len(sequences)} sequences")
+        print(
+            f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}]",
+            f"Compute Structural Novelty for {len(sequences)} sequences",
+        )
         seq2struc_novelty = compute_structure_novelty(
             sequences=sequences,
             pdb_cache_dir=pdb_cache_dir,
@@ -281,8 +286,13 @@ def novelty_evaluate_worker(
             foldseek_path=foldseek_ex_path,
             threads=worker_per_foldseek,
         )
-    print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-    print("Finish Novelty Calculation")
+    print(
+        "<<<",
+        datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        " - ",
+        "Novelty Calculation Finished",
+        "<<<",
+    )
 
     results = []
     for idx, item in enumerate(
@@ -390,10 +400,10 @@ class NoveltyMetric(BaseMetric):
                     results[f"Novelty-Easy(Struc)#{b}"].mean() * 100
                     for b in range(1, bs + 1)
                 ]
-                _summary["Novelty-Easy(Seq)"] = np.nanmean(easy_novelties)
+                _summary["Novelty-Easy(Struc)"] = np.nanmean(easy_novelties)
                 _summary.update(
                     {
-                        f"Novelty-Easy(Seq)#{b}": easy_novelties[b - 1]
+                        f"Novelty-Easy(Struc)#{b}": easy_novelties[b - 1]
                         for b in range(1, bs + 1)
                     }
                 )
@@ -402,10 +412,10 @@ class NoveltyMetric(BaseMetric):
                     results[f"Novelty-Hard(Struc)#{b}"].mean() * 100
                     for b in range(1, bs + 1)
                 ]
-                _summary["Novelty-Hard(Seq)"] = np.nanmean(hard_novelties)
+                _summary["Novelty-Hard(Struc)"] = np.nanmean(hard_novelties)
                 _summary.update(
                     {
-                        f"Novelty-Hard(Seq)#{b}": hard_novelties[b - 1]
+                        f"Novelty-Hard(Struc)#{b}": hard_novelties[b - 1]
                         for b in range(1, bs + 1)
                     }
                 )

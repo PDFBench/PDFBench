@@ -48,9 +48,9 @@ def get_keywords(
         ]
         out = subprocess.run(
             [ipr_scan_ex] + args,
-            # check=True,
-            # stdout=subprocess.DEVNULL,
-            # stderr=None,
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=None,
         )
         if out.returncode != 0:
             raise Exception("IPR Scan failed")
