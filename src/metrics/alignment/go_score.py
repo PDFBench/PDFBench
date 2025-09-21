@@ -222,7 +222,11 @@ class GOScoreMetric(BaseMetric):
                 for b in range(1, bs + 1)
             ]
             return {
-                "GORecovery": np.mean(go_recs),
+                "GORecovery": (
+                    rf"{np.mean(go_recs):.2f}"
+                    r"\(\pm\)"
+                    rf"{np.std(go_recs, ddof=1):.2f}"
+                ),
                 **{f"GORecovery#{b}": go_recs[b - 1] for b in range(1, bs + 1)},
             }
 

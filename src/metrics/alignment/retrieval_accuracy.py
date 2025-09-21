@@ -343,12 +343,15 @@ class RetrievalAccuracyMetric(BaseMetric):
             for difficulty in RetrievalDifficulty:
                 if difficulty.name in self.retrieval_difficulties:
                     for idx, tot in enumerate([4, 10, 20]):
+                        sub_rAccs = rAccs[f"{difficulty.name}"][
+                            idx * bs : (idx + 1) * bs
+                        ]
                         _summary[
                             f"RetrievalAccuracy[{tot}]-{difficulty.name}"
-                        ] = np.mean(
-                            rAccs[f"{difficulty.name}"][
-                                idx * bs : (idx + 1) * bs
-                            ]
+                        ] = (
+                            rf"{np.mean(sub_rAccs):.2f}"
+                            r"\(\pm\)"
+                            rf"{np.std(sub_rAccs, ddof=1):.2f}"
                         )
                         _summary.update(
                             {

@@ -174,7 +174,11 @@ class EvoLlamaScoreMetric(BaseMetric):
                 results[f"evollama_score#{b}"].mean() * 100
                 for b in range(1, bs + 1)
             ]
-            _summary["EvoLlamaScore"] = np.nanmean(evollama_scores)
+            _summary["EvoLlamaScore"] = (
+                rf"{np.mean(evollama_scores):.2f}"
+                r"\(\pm\)"
+                rf"{np.std(evollama_scores, ddof=1):.2f}"
+            )
             _summary.update(
                 {
                     f"evollama_score#{b}": evollama_scores[b - 1]

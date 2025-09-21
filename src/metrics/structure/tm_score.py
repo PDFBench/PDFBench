@@ -161,13 +161,17 @@ class TMScoreMetric(BaseMetric):
         if bs == 1:
             _summary["GT-TMScore"] = results["GT-TMScore#1"].mean() * 100
         else:
-            tmscores = [
+            tm_scores = [
                 results[f"GT-TMScore#{b}"].mean() * 100
                 for b in range(1, bs + 1)
             ]
-            _summary["GT-TMScore"] = np.nanmean(tmscores)
+            _summary["GT-TMScore"] = (
+                rf"{np.mean(tm_scores):.2f}"
+                r"\(\pm\)"
+                rf"{np.std(tm_scores, ddof=1):.2f}"
+            )
             _summary.update(
-                {f"GT-TMScore#{b}": tmscores[b - 1] for b in range(1, bs + 1)}
+                {f"GT-TMScore#{b}": tm_scores[b - 1] for b in range(1, bs + 1)}
             )
         return _summary
 

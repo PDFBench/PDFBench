@@ -89,7 +89,11 @@ class ProTrekScoreMetric(BaseMetric):
                 results[f"ProTrekScore#{b}"].mean() * 100
                 for b in range(1, bs + 1)
             ]
-            _summary["ProTrekScore"] = np.nanmean(protrek_scores)
+            _summary["ProTrekScore"] = (
+                rf"{np.mean(protrek_scores):.2f}"
+                r"\(\pm\)"
+                rf"{np.std(protrek_scores, ddof=1):.2f}"
+            )
             _summary.update(
                 {
                     f"ProTrekScore#{b}": protrek_scores[b - 1]

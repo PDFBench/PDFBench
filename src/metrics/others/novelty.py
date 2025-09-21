@@ -165,8 +165,8 @@ def compute_sequence_novelty(
             querydb,
             "--dbtype",
             "1",
-            "-v",
-            "1",
+            # "-v",
+            # "1",
         ]
         res = subprocess.run(cmd)
         if res.returncode != 0:
@@ -184,8 +184,8 @@ def compute_sequence_novelty(
             "1",
             "--max-seqs",
             "300",
-            "-v",
-            "1",
+            # "-v",
+            # "1",
             "--threads",
             f"{threads}",
             "-e",
@@ -203,8 +203,8 @@ def compute_sequence_novelty(
             targtedb,
             outputdb,
             result_file,
-            "-v",
-            "1",
+            # "-v",
+            # "1",
             "--threads",
             f"{threads}",
             "--format-output",
@@ -323,7 +323,7 @@ def novelty_evaluate_worker(
                 res[f"Novelties(Seq)#{b}"] = novelties
 
             if Novelty.Structure.name in compute_novelties:
-                if md5seq not in seq2struc_novelty:
+                if md5seq in seq2struc_novelty:
                     noveltyH, noveltyE, novelties = seq2struc_novelty[md5seq]
                 else:
                     noveltyH, noveltyE, novelties = 1.0, 1.0, []
@@ -376,7 +376,11 @@ class NoveltyMetric(BaseMetric):
                     results[f"Novelty-Easy(Seq)#{b}"].mean() * 100
                     for b in range(1, bs + 1)
                 ]
-                _summary["Novelty-Easy(Seq)"] = np.nanmean(easy_novelties)
+                _summary["Novelty-Easy(Seq)"] = (
+                    rf"{np.mean(easy_novelties):.2f}"
+                    r"\(\pm\)"
+                    rf"{np.std(easy_novelties, ddof=1):.2f}"
+                )
                 _summary.update(
                     {
                         f"Novelty-Easy(Seq)#{b}": easy_novelties[b - 1]
@@ -388,7 +392,11 @@ class NoveltyMetric(BaseMetric):
                     results[f"Novelty-Hard(Seq)#{b}"].mean() * 100
                     for b in range(1, bs + 1)
                 ]
-                _summary["Novelty-Hard(Seq)"] = np.nanmean(hard_novelties)
+                _summary["Novelty-Hard(Seq)"] = (
+                    rf"{np.mean(hard_novelties):.2f}"
+                    r"\(\pm\)"
+                    rf"{np.std(hard_novelties, ddof=1):.2f}"
+                )
                 _summary.update(
                     {
                         f"Novelty-Hard(Seq)#{b}": hard_novelties[b - 1]
@@ -400,7 +408,11 @@ class NoveltyMetric(BaseMetric):
                     results[f"Novelty-Easy(Struc)#{b}"].mean() * 100
                     for b in range(1, bs + 1)
                 ]
-                _summary["Novelty-Easy(Struc)"] = np.nanmean(easy_novelties)
+                _summary["Novelty-Easy(Struc)"] = (
+                    rf"{np.mean(easy_novelties):.2f}"
+                    r"\(\pm\)"
+                    rf"{np.std(easy_novelties, ddof=1):.2f}"
+                )
                 _summary.update(
                     {
                         f"Novelty-Easy(Struc)#{b}": easy_novelties[b - 1]
@@ -412,7 +424,11 @@ class NoveltyMetric(BaseMetric):
                     results[f"Novelty-Hard(Struc)#{b}"].mean() * 100
                     for b in range(1, bs + 1)
                 ]
-                _summary["Novelty-Hard(Struc)"] = np.nanmean(hard_novelties)
+                _summary["Novelty-Hard(Struc)"] = (
+                    rf"{np.mean(hard_novelties):.2f}"
+                    r"\(\pm\)"
+                    rf"{np.std(hard_novelties, ddof=1):.2f}"
+                )
                 _summary.update(
                     {
                         f"Novelty-Hard(Struc)#{b}": hard_novelties[b - 1]
@@ -437,7 +453,7 @@ class NoveltyEvaluator(BaseEvaluator):
 
     def _excete_manual_multiprocess(self) -> None:
         results = multiprocess_evaluate(
-            dataset=self.dataset,  # type: ignore
+            dataset=self.dataset[:10],  # type: ignore
             eval_worker=novelty_evaluate_worker,
             num_workers=1,
             kwargs={

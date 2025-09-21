@@ -161,12 +161,20 @@ class RepetitivenessMetric(BaseMetric):
             ]
 
             out = {
-                "repeat": np.mean(repeats),
+                "repeat": (
+                    rf"{np.mean(repeats):.2f}"
+                    r"\(\pm\)"
+                    rf"{np.std(repeats, ddof=1):.2f}"
+                ),
                 **{f"repeat#{b}": repeats[b - 1] for b in range(1, bs + 1)},
             }
 
             for idx, n in enumerate(self.RepN):
-                out[f"rep{n}"] = np.mean(repns[idx])
+                out[f"rep{n}"] = (
+                    rf"{np.mean(repns[idx]):.2f}"
+                    r"\(\pm\)"
+                    rf"{np.std(repns[idx], ddof=1):.2f}"
+                )
                 out.update(
                     {f"rep{n}#{b}": repns[idx][b - 1] for b in range(1, bs + 1)}
                 )
