@@ -207,6 +207,7 @@ class BaseEvaluator(ABC):
         self._output_dir = config.basic.output_dir
         self._speed_up = config.basic.speed_up
         self._name: str
+        self.log_dir = config.basic.log_dir
         self.logger = logging.get_logger(
             f"{self.__class__.__module__}.{self.__class__.__name__}"
         )
@@ -233,6 +234,10 @@ class BaseEvaluator(ABC):
     @property
     def output_path(self) -> str:
         return os.path.join(self.output_dir, f"{self.name}.json")
+
+    @property
+    def log_file(self) -> str:
+        return os.path.join(self.log_dir, f"{self.name}.log")
 
     @property
     def design_batch_size(self) -> int:

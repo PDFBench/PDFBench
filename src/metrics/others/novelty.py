@@ -63,7 +63,7 @@ def compute_structure_novelty(
             "--threads",
             f"{threads}",
             "-v",
-            "1",
+            "2",
         ]
         res = subprocess.run(cmd)
         if res.returncode != 0:
@@ -82,7 +82,7 @@ def compute_structure_novelty(
             "--max-seqs",
             "300",
             "-v",
-            "1",
+            "2",
             "--threads",
             f"{threads}",
             "-e",
@@ -102,7 +102,7 @@ def compute_structure_novelty(
             output_db,
             results_file,
             "-v",
-            "1",
+            "2",
             "--threads",
             f"{threads}",
             "--format-output",
@@ -137,6 +137,7 @@ def compute_sequence_novelty(
     targtedb: str,
     mmseqs_path: str,
     threads: int,
+    log_file: str,
 ) -> dict[str, Tuple[float, float, list[float]]]:
     """
     compute novelty using mmseq2, modified from [PAAG](https://github.com/chaohaoyuan/PAAG/tree/main/evaluation/unconditional/novelty)
@@ -155,7 +156,8 @@ def compute_sequence_novelty(
 
         with open(fasta, "w") as f:
             for seq in sequences:
-                f.write(f">{seq_to_md5(seq)}\n{seq}\n")
+                if len(seq) > 10:  # filter short sequences
+                    f.write(f">{seq_to_md5(seq)}\n{seq}\n")
 
         # fasta to db
         cmd = [
@@ -165,8 +167,8 @@ def compute_sequence_novelty(
             querydb,
             "--dbtype",
             "1",
-            # "-v",
-            # "1",
+            "-v",
+            "3",
         ]
         res = subprocess.run(cmd)
         if res.returncode != 0:
@@ -184,8 +186,8 @@ def compute_sequence_novelty(
             "1",
             "--max-seqs",
             "300",
-            # "-v",
-            # "1",
+            "-v",
+            "2",
             "--threads",
             f"{threads}",
             "-e",
@@ -203,8 +205,8 @@ def compute_sequence_novelty(
             targtedb,
             outputdb,
             result_file,
-            # "-v",
-            # "1",
+            "-v",
+            "2",
             "--threads",
             f"{threads}",
             "--format-output",
@@ -246,6 +248,7 @@ def novelty_evaluate_worker(
     mmseqs_targetdb_path: str,
     foldseek_targetdb_path: str,
     pdb_cache_dir: str,
+    log_file: str | None = None,
 ) -> None:
     sequences = list(
         set(
@@ -273,6 +276,7 @@ def novelty_evaluate_worker(
             mmseqs_path=mmseqs_ex_path,
             targtedb=mmseqs_targetdb_path,
             threads=worker_per_mmseqs,
+            log_file=log_file,
         )
     if Novelty.Structure.name in compute_novelties:
         print(
@@ -453,7 +457,7 @@ class NoveltyEvaluator(BaseEvaluator):
 
     def _excete_manual_multiprocess(self) -> None:
         results = multiprocess_evaluate(
-            dataset=self.dataset[:10],  # type: ignore
+            dataset=self.dataset,  # type: ignore
             eval_worker=novelty_evaluate_worker,
             num_workers=1,
             kwargs={
@@ -466,6 +470,7 @@ class NoveltyEvaluator(BaseEvaluator):
                 "mmseqs_targetdb_path": self.mmseqs_targetdb_path,
                 "foldseek_targetdb_path": self.foldseek_targetdb_path,
                 "pdb_cache_dir": self.pdb_cache_dir,
+                "log_file": self.log_file,
             },
         )
         self.to_json(results)
