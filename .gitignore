@@ -187,9 +187,10 @@ src/metrics/alignment/.EvoLlama
 # vscode
 **/.vscode/
 
-# example output
-example/**/*.json
-example/**/logs/
+# example evaluation output
+example/output/**/*.json
+example/output/**/logs/
+example/output/**/pdb_cache_dir/
 
 # tools
 tools/MMseqs/*

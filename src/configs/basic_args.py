@@ -7,21 +7,30 @@ from src.datasets import DatasetType
 
 @dataclass
 class BasicArguments:
+    # Path to the input `.json` file containing model design results.
     input_path: str
     design_batch_size: int
+    # Directory for storing evaluation outputs.
     output_dir: str
+    # Input format specification for function–sequence data. PDFBench supports two built-in types and a custom type (see `README.md`).
     dataset_type: DatasetType
+    # Directory for saving log files. If absolute path is not provided, it will be relative to the output directory (`basic.output_dir`).
     log_dir: str = "logs"
     verbose: bool = True
-    visualize: bool = False  # FIXME: NAME
+    # Whether to generate a summary of evaluation results across all metrics.
+    visualize: bool = False
+    # File name for the visualization output.
     visual_name: str = "results"
+    # Number of GPUs to be used. PDFBench will use all GPUs if num_gpu is -1.
     num_gpu: int = -1
+    # Number of CPU cores to be used. PDFBench will use all CPU cores if num_cpu is -1.
     num_cpu: int = -1
+    # Not supported yet. Don't set True.
     speed_up: bool = False
+    # Path to the Python interpreter for `PDFBench`. Use the default if the PDFBench environment is already activated.
     pdfbench_handler: str = "python"
-    # Don't change this if you activate the PDFBench env
+    # Path to the Python interpreter for `PDF-DeepGO`. Required when using DeepGO-SE.
     deepgo_handler: str | None = None
-    # Must change this if you want to use DeepGO-SE
 
     def __post_init__(self):
         if self.num_gpu == -1:

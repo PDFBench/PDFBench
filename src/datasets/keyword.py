@@ -6,7 +6,7 @@ from .dataset import BaseDataset
 class KeywordDataset(BaseDataset):
     """
     Keyword-guided Dataset for
-    [SwissInPro](https://huggingface.co/datasets/Knlife/SwissInPro)
+    [SwissInPro](https://huggingface.co/datasets/Knlife/SwiwwProtIPG)
     and [CAMEOTest](https://huggingface.co/datasets/Knlife/CAMEOTest),
     with keywords from [InterPro](https://www.ebi.ac.uk/interpro), used in PDFBench official experiments.
     """

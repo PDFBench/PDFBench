@@ -68,66 +68,87 @@ class EvaluationArgs(Args):
     def __post_init__(self):
         """Validation and Initialization of Arguments"""
         # mmseqs
-        mmseqs_ex_path = (
-            self.novelty.mmseqs_ex_path
-            or self.diversity.mmseqs_ex_path
-            or self.identity.mmseqs_ex_path
-        )
-        if mmseqs_ex_path:
-            self.novelty.mmseqs_ex_path = self.diversity.mmseqs_ex_path = (
-                self.identity.mmseqs_ex_path
-            ) = mmseqs_ex_path
-        else:
-            raise ValueError(
-                "At least one `mmseqs_ex_path` in "
-                "[`novelty`, `diversity`, `identity`] must be set"
+        if self.novelty.run or self.diversity.run or self.identity.run:
+            mmseqs_ex_path = (
+                self.novelty.mmseqs_ex_path
+                or self.diversity.mmseqs_ex_path
+                or self.identity.mmseqs_ex_path
             )
+            if mmseqs_ex_path:
+                self.novelty.mmseqs_ex_path = self.diversity.mmseqs_ex_path = (
+                    self.identity.mmseqs_ex_path
+                ) = mmseqs_ex_path
+            else:
+                raise ValueError(
+                    "At least one `mmseqs_ex_path` in "
+                    "[`novelty`, `diversity`, `identity`] must be set"
+                )
 
         # tm_score
-        tm_score_ex_path = (
-            self.tm_score.tm_score_ex_path or self.diversity.tm_score_ex_path
-        )
-        if tm_score_ex_path:
-            self.tm_score.tm_score_ex_path = self.diversity.tm_score_ex_path = (
-                tm_score_ex_path
+        if self.tm_score.run or self.diversity.run:
+            tm_score_ex_path = (
+                self.tm_score.tm_score_ex_path
+                or self.diversity.tm_score_ex_path
             )
-        else:
-            raise ValueError(
-                "At least one `tm_score_ex_path` in "
-                "[`tm_score`, `diversity`] must be set"
-            )
+            if tm_score_ex_path:
+                self.tm_score.tm_score_ex_path = (
+                    self.diversity.tm_score_ex_path
+                ) = tm_score_ex_path
+            else:
+                raise ValueError(
+                    "At least one `tm_score_ex_path` in "
+                    "[`tm_score`, `diversity`] must be set"
+                )
 
         # pdb_cache_dir
-        pdb_cache_dir = (
-            self.foldability.pdb_cache_dir
-            or self.tm_score.pdb_cache_dir
-            or self.diversity.pdb_cache_dir
-        )
-        if pdb_cache_dir:
-            if not os.path.isabs(pdb_cache_dir):
-                pdb_cache_dir = os.path.join(
-                    self.basic.output_dir, pdb_cache_dir
-                )
-            self.foldability.pdb_cache_dir = self.tm_score.pdb_cache_dir = (
-                self.diversity.pdb_cache_dir
-            ) = pdb_cache_dir
-            os.makedirs(pdb_cache_dir, exist_ok=True)
-        else:
-            raise ValueError(
-                "At least one `pdb_cache_dir` in "
-                "[`foldability`, `diversity`] must be set"
+        if self.foldability.run or self.tm_score.run or self.diversity.run:
+            pdb_cache_dir = (
+                self.foldability.pdb_cache_dir
+                or self.tm_score.pdb_cache_dir
+                or self.diversity.pdb_cache_dir
             )
+            if pdb_cache_dir:
+                if not os.path.isabs(pdb_cache_dir):
+                    pdb_cache_dir = os.path.join(
+                        self.basic.output_dir, pdb_cache_dir
+                    )
+                self.foldability.pdb_cache_dir = self.tm_score.pdb_cache_dir = (
+                    self.diversity.pdb_cache_dir
+                ) = pdb_cache_dir
+                os.makedirs(pdb_cache_dir, exist_ok=True)
+            else:
+                raise ValueError(
+                    "At least one `pdb_cache_dir` in "
+                    "[`foldability`, `diversity`] must be set"
+                )
 
         # protrek
-        protrek_path = (
-            self.protrek_score.protrek_path or self.retrieval_acc.protrek_path
-        )
-        if protrek_path:
-            self.protrek_score.protrek_path = (
-                self.retrieval_acc.protrek_path
-            ) = protrek_path
-        else:
-            raise ValueError(
-                "At least one `protrek_path` in "
-                "[`protrek_score`, `retrieval_acc`] must be set"
+        if self.protrek_score.run or self.retrieval_acc.run:
+            protrek_path = (
+                self.protrek_score.protrek_path
+                or self.retrieval_acc.protrek_path
             )
+            if protrek_path:
+                self.protrek_score.protrek_path = (
+                    self.retrieval_acc.protrek_path
+                ) = protrek_path
+            else:
+                raise ValueError(
+                    "At least one `protrek_path` in "
+                    "[`protrek_score`, `retrieval_acc`] must be set"
+                )
+
+        # ipr cache path
+        if self.ipr_score.run:
+            ipr_cache_path = self.ipr_score.interpro_cache_path
+            if ipr_cache_path:
+                if not os.path.isabs(ipr_cache_path):
+                    ipr_cache_path = os.path.join(
+                        self.basic.output_dir, ipr_cache_path
+                    )
+                self.ipr_score.interpro_cache_path = ipr_cache_path
+            else:
+                raise ValueError(
+                    "At least one `interpro_cache_path` in "
+                    "[`ipr_score`] must be set"
+                )

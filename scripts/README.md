@@ -1,0 +1,1 @@
+### scripts for downloading requirements of PDFBench and DeepGO-SE.

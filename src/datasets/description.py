@@ -7,8 +7,8 @@ class DescriptionDataset(BaseDataset):
     """
     Description-guided Dataset
     for
-    [SwissMolinst](?)
-    and [MolinstTest](?) with description
+    [SwissMolinst](https://huggingface.co/datasets/nwliu/Molinst-SwissProtCLAP)
+    and [MolinstTest](https://huggingface.co/datasets/nwliu/Molinst-SwissProtCLAP) with description
     from
     [SwissProtCLAP](https://huggingface.co/datasets/vinesmsuic/SwissProtCLAP)
     and protein_design.json of [Mol-Instructions](https://huggingface.co/datasets/zjunlp/Mol-Instructions),

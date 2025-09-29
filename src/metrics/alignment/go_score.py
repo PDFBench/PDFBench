@@ -19,7 +19,6 @@ logger = logging.get_logger(__name__)
 
 def deepgo_predict(
     sequences: list[str],
-    deepgo_root: str,
     deepgo_weight_path: str,
     threshold: float = 0.1,
     batch_size: int = 32,
@@ -28,10 +27,10 @@ def deepgo_predict(
     use_mf: bool = False,
     use_cc: bool = False,
 ):
-    from .models.DeepGO2.data import load_normal_forms  # type: ignore
-    from .models.DeepGO2.extract_esm import extract_esm  # type: ignore
-    from .models.DeepGO2.models import DeepGOModel  # type: ignore
-    from .models.DeepGO2.utils import Ontology  # type: ignore
+    from .models.DeepGO2.data import load_normal_forms
+    from .models.DeepGO2.extract_esm import extract_esm
+    from .models.DeepGO2.models import DeepGOModel
+    from .models.DeepGO2.utils import Ontology
 
     with tempfile.TemporaryDirectory() as temp_folder:
         tmp_fasta_path = os.path.join(temp_folder, "temp_input.fasta")
@@ -133,7 +132,6 @@ def go_score_evaluate_worker(
     pid: int,
     subset: list[dict],
     design_batch_size: int,
-    deepgo_root: str,
     deepgo_weight_path: str,
     deepgo_threshold: float,
     deepgo_batch_size: int,
@@ -145,7 +143,6 @@ def go_score_evaluate_worker(
             for b in range(1, design_batch_size + 1)
         ]
         + [item["reference"] for item in subset],
-        deepgo_root=deepgo_root,
         deepgo_weight_path=deepgo_weight_path,
         threshold=deepgo_threshold,
         batch_size=deepgo_batch_size,
@@ -201,7 +198,6 @@ class GOScoreMetric(BaseMetric):
     def __init__(self, config):
         super().__init__(config)
         self._name = config.go_score.name
-        self.deepgo_root = config.go_score.deepgo_root
         self.deepgo_threshold = config.go_score.deepgo_threshold
         self.deepgo_batch_size = config.go_score.deepgo_batch_size
 
@@ -234,7 +230,6 @@ class GOScoreEvaluator(BaseEvaluator):
     def __init__(self, config):
         super().__init__(config)
         self._name = config.go_score.name
-        self.deepgo_root = config.go_score.deepgo_root
         self.deepgo_weight_path = config.go_score.deepgo_weight_path
         self.deepgo_threshold = config.go_score.deepgo_threshold
         self.deepgo_batch_size = config.go_score.deepgo_batch_size
@@ -247,7 +242,6 @@ class GOScoreEvaluator(BaseEvaluator):
             kwargs={
                 "design_batch_size": self.design_batch_size,
                 "deepgo_weight_path": self.deepgo_weight_path,
-                "deepgo_root": self.deepgo_root,
                 "deepgo_threshold": self.deepgo_threshold,
                 "deepgo_batch_size": self.deepgo_batch_size,
             },

@@ -2,13 +2,11 @@ basic:
   input_path: data/designed/description/ProDVa.json
   output_dir: example/description-guided
   dataset_type: DescriptionDataset
-  verbose: True
   visualize: True
   num_gpu: -1
   num_cpu: -1
   design_batch_size: 3
-  pdfbench_handler: python 
-  deepgo_handler: ~/.conda/envs/PDF-DeepGO2/bin/python 
+  deepgo_handler: ~/.conda/envs/PDF-DeepGO2/bin/python  # this may be changed, if you change the environment name or have a different conda path.
 
   
 # Sequence
@@ -22,39 +20,34 @@ bert_score:
 identity: 
   run: True
   thread_per_mmseqs: 16
-  mmseqs_ex_path: /home/jhkuang/app/mmseqs/bin/mmseqs
 perplexity:
   run: True
-  compute_models: [ProGen2, ProtGPT2, RITA, ProteinGLM]
+  compute_models: [ProGen2, ProtGPT2, RITA]
 
 
 # Structure
 foldability:
   run: True
-  pdb_cache_dir: /nas/data/jhkuang/cache/dynamsa/eval/.cache/pdb_cache_dir
 tm_score:
   run: True
-  tm_score_ex_path: /home/jhkuang/app/TMscore/TMscore
+  tm_score_ex_path: tools/TMScore/TMscore
 
 
 # Language Alignment
 protrek_score: 
   run: True
-  protrek_path: /home/nwliu/data/pretrain/ProTrek_650M_UniRef50
+  protrek_path: weights/ProTrek_650M_UniRef50
 evollama_score:
   run: True
-  evollama_path: /home/nwliu/data/pretrain/EvoLlama/oracle_denovo_3B/checkpoint-50000
-  llama_name_or_path: /home/jhkuang/public/pretrain/meta-llama/Llama-3.2-3B-Instruct
-  pubmedbert_name_or_path: /home/jhkuang/data/pretrain/pubmedbert-base-embeddings
+  evollama_path: weights/EvoLlama
 ipr_score:
   run: True
-  interpro_scan_ex_path: /home/jhkuang/app/interproscan-5.73-104.0/interproscan.sh
-  interpro_cache_path: /home/jhkuang/data/cache/dynamsa/eval/.cache/.ipr_cache.json
-  workers_per_scan: -1
+  interpro_scan_ex_path: tools/InterProScan/interproscan/interproscan-5.75-106.0-64/interproscan.sh
+  interpro_cache_path: .ipr_cache.json
 go_score:
   run: True
-  deepgo_root: /nas/data/jhkuang/projects/PDFBench_related/PDFBench/src/metrics/alignment/deepgo2
-retrievl_acc:
+  deepgo_weight_path: weights/DeepGO/data
+retrieval_acc:
   run: True
   retrieval_difficulties: [Soft, Normal, Hard]
 
@@ -63,13 +56,10 @@ retrievl_acc:
 novelty:
   run: True
   novelties: [Sequence, Structure]
-  workers_per_mmseqs: -1
-  workers_per_foldseek: -1
-  mmseqs_ex_path: /home/jhkuang/app/mmseqs/bin/mmseqs
-  foldseek_ex_path: /home/jhkuang/app/foldseek/bin/foldseek
-  mmseqs_targetdb_path: /home/jhkuang/data/datasets/MMseqs/db/uniprotkb/uniprot_gpu
-  foldseek_targetdb_path: /home/jhkuang/data/datasets/FoldSeek/db/Alphafold_SwissProt_GPU/AlphaSwissG
-  pdb_cache_dir: /nas/data/jhkuang/cache/dynamsa/eval/.cache/pdb_cache_dir
+  mmseqs_ex_path: tools/MMseqs/bin/mmseqs
+  foldseek_ex_path: tools/Foldseek/bin/foldseek
+  mmseqs_targetdb_path: tools/MMseqs/db/uniprotdb_gpu
+  foldseek_targetdb_path: tools/Foldseek/db/AlphaSwissGPU/AlphaG
 diversity:
   run: True
   diversities: [Sequence, Structure]
