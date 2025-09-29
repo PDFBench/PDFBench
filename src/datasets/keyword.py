@@ -1,9 +1,9 @@
 import re
 
-from ..dataset import BaseDataset
+from .dataset import BaseDataset
 
 
-class InterProDataset(BaseDataset):
+class KeywordDataset(BaseDataset):
     """
     Keyword-guided Dataset for
     [SwissInPro](https://huggingface.co/datasets/Knlife/SwissInPro)
@@ -14,10 +14,10 @@ class InterProDataset(BaseDataset):
     @classmethod
     def function(cls, instruction: str) -> str:
         """
-        Extract the part of Instruciton related to protein function
+        Extract the part of Instruction related to protein function
 
-        :param instruciton: Instruction of InterProDataset
-        :type instruciton: str
+        :param instruction: Instruction of InterProDataset
+        :type instruction: str
         :return: Part of the instruction containing protein function in InterProDataset
         :rtype: str
         """

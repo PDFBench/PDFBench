@@ -68,6 +68,7 @@ class IPRScoreArguments:
 @dataclass
 class GOScoreArguments:
     deepgo_root: str
+    deepgo_weight_path: str
     deepgo_threshold: float = 0.7
     deepgo_batch_size: int = 64
 

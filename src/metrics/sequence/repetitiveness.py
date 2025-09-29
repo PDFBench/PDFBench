@@ -7,7 +7,6 @@ from src.configs.sequence_args import Repeat_Algorithm
 from src.metrics import BaseEvaluator, BaseMetric
 from src.utils.multiprocess import multiprocess_evaluate
 
-
 def compute_repeat(sequence: str) -> float:
     """
     Calculate the proportion of characters in a string that are repeated substrings

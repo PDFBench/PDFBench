@@ -5,7 +5,7 @@ from dataclasses import dataclass
 class FoldabilityArguments:
     run: bool = True
     name: str = "foldability"
-    pdb_cache_dir: str = "pdb_cache_dir"
+    pdb_cache_dir: str = "pdb_cache_dir/"
     esm_fold_name_or_path: str = "facebook/esmfold_v1"
 
     def __post_init__(self):

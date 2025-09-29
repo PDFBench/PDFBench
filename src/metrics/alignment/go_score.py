@@ -20,6 +20,7 @@ logger = logging.get_logger(__name__)
 def deepgo_predict(
     sequences: list[str],
     deepgo_root: str,
+    deepgo_weight_path: str,
     threshold: float = 0.1,
     batch_size: int = 32,
     device: str = "cpu",
@@ -27,15 +28,11 @@ def deepgo_predict(
     use_mf: bool = False,
     use_cc: bool = False,
 ):
-    import sys
+    from .models.DeepGO2.data import load_normal_forms  # type: ignore
+    from .models.DeepGO2.extract_esm import extract_esm  # type: ignore
+    from .models.DeepGO2.models import DeepGOModel  # type: ignore
+    from .models.DeepGO2.utils import Ontology  # type: ignore
 
-    sys.path.append(deepgo_root)
-    from deepgo.data import load_normal_forms  # type: ignore
-    from deepgo.extract_esm import extract_esm  # type: ignore
-    from deepgo.models import DeepGOModel  # type: ignore
-    from deepgo.utils import Ontology  # type: ignore
-
-    deepgo_data_root = os.path.join(deepgo_root, "data")
     with tempfile.TemporaryDirectory() as temp_folder:
         tmp_fasta_path = os.path.join(temp_folder, "temp_input.fasta")
         with open(tmp_fasta_path, "w") as f:
@@ -57,8 +54,8 @@ def deepgo_predict(
         if use_cc:
             onts.append("cc")
 
-        go_file = f"{deepgo_data_root}/go.obo"
-        go_norm = f"{deepgo_data_root}/go-plus.norm"
+        go_file = f"{deepgo_weight_path}/go.obo"
+        go_norm = f"{deepgo_weight_path}/go-plus.norm"
         go = Ontology(go_file, with_rels=True)
 
         ent_models = {
@@ -69,9 +66,9 @@ def deepgo_predict(
 
         results = {p: {ont: [] for ont in onts} for p in proteins}
         for ont in onts:
-            terms_file = f"{deepgo_data_root}/{ont}/terms.pkl"
+            terms_file = f"{deepgo_weight_path}/{ont}/terms.pkl"
             terms_df = pd.read_pickle(terms_file)
-            terms = terms_df["gos"].values.flatten()
+            terms = terms_df["gos"].values.flatten()  # type: ignore
             terms_dict = {v: i for i, v in enumerate(terms)}
 
             n_terms = len(terms_dict)
@@ -89,7 +86,7 @@ def deepgo_predict(
 
             for mn in ent_models[ont]:
                 model_file = (
-                    f"{deepgo_data_root}/{ont}/deepgozero_esm_plus_{mn}.th"
+                    f"{deepgo_weight_path}/{ont}/deepgozero_esm_plus_{mn}.th"
                 )
                 model.load_state_dict(
                     torch.load(model_file, map_location=device)
@@ -137,6 +134,7 @@ def go_score_evaluate_worker(
     subset: list[dict],
     design_batch_size: int,
     deepgo_root: str,
+    deepgo_weight_path: str,
     deepgo_threshold: float,
     deepgo_batch_size: int,
 ):
@@ -148,6 +146,7 @@ def go_score_evaluate_worker(
         ]
         + [item["reference"] for item in subset],
         deepgo_root=deepgo_root,
+        deepgo_weight_path=deepgo_weight_path,
         threshold=deepgo_threshold,
         batch_size=deepgo_batch_size,
         device=f"cuda:{pid}",
@@ -182,7 +181,7 @@ def go_score_evaluate_worker(
             )
 
             if len(ref_ids) == 0:
-                rec = 0.0
+                rec = float("nan")
             else:
                 rec = sum([id in set(ref_ids) for id in res_ids]) / len(ref_ids)
 
@@ -236,6 +235,7 @@ class GOScoreEvaluator(BaseEvaluator):
         super().__init__(config)
         self._name = config.go_score.name
         self.deepgo_root = config.go_score.deepgo_root
+        self.deepgo_weight_path = config.go_score.deepgo_weight_path
         self.deepgo_threshold = config.go_score.deepgo_threshold
         self.deepgo_batch_size = config.go_score.deepgo_batch_size
 
@@ -246,6 +246,7 @@ class GOScoreEvaluator(BaseEvaluator):
             num_workers=self.num_gpu,
             kwargs={
                 "design_batch_size": self.design_batch_size,
+                "deepgo_weight_path": self.deepgo_weight_path,
                 "deepgo_root": self.deepgo_root,
                 "deepgo_threshold": self.deepgo_threshold,
                 "deepgo_batch_size": self.deepgo_batch_size,

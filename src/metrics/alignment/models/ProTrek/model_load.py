@@ -1,11 +1,23 @@
+import contextlib
 import os
+import sys
 
-from ...utils.context_manager import suppress_all_output
+from .protrek_trimodal_model import ProTrekTrimodalModel
 
-with suppress_all_output():
-    from .models.ProTrek.protrek_trimodal_model import (
-        ProTrekTrimodalModel,
-    )
+
+@contextlib.contextmanager
+def suppress_all_output():
+    """上下文管理器，用于同时抑制标准输出和标准错误输出"""
+    with open(os.devnull, "w") as devnull:
+        old_stdout = sys.stdout
+        old_stderr = sys.stderr
+        sys.stdout = devnull
+        sys.stderr = devnull
+        try:
+            yield
+        finally:
+            sys.stdout = old_stdout
+            sys.stderr = old_stderr
 
 
 def load_protrek(protrek_path: str, device_id: int) -> ProTrekTrimodalModel:
@@ -22,5 +34,6 @@ def load_protrek(protrek_path: str, device_id: int) -> ProTrekTrimodalModel:
             protrek_path, "ProTrek_650M_UniRef50.pt"
         ),
     }
+
     with suppress_all_output():
         return ProTrekTrimodalModel(**config).eval().to(f"cuda:{device_id}")  # type: ignore

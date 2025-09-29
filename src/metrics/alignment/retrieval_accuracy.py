@@ -15,10 +15,7 @@ from src.utils.multiprocess import multiprocess_evaluate
 from ..metric import BaseEvaluator, BaseMetric
 
 with suppress_all_output():
-    from .ProTrek.model.ProTrek.protrek_trimodal_model import (
-        ProTrekTrimodalModel,
-    )
-    from .utils import load_protrek
+    from .models.ProTrek.model_load import load_protrek
 
 
 def get_cameo_text(instruction: str) -> str:
@@ -122,7 +119,7 @@ def compute_retrieval_accuracy_batch_soft_hard(
 
 
 def compute_retrieval_accuracy(
-    model: ProTrekTrimodalModel,
+    model,
     inst: str,
     seq: str,
     neg_seq_pool: list[str],
@@ -168,29 +165,39 @@ def evollama_score_evaluate_worker(
             f"retrieval_difficulties: {retrieval_difficulties}"
         )
 
-    model: ProTrekTrimodalModel = load_protrek(protrek_path, pid)
+    model = load_protrek(protrek_path, pid)
 
     # pre-calculate the embeddings
     # sequence embedding pool
-    seq_pool = [
-        item[f"response#{b}"][:2048]  # type: ignore
-        for item in wholeset
+    seq_pool: list[list[str]] = [
+        [
+            item[f"response#{b}"][:2048]  # type: ignore
+            for item in wholeset
+        ]
         for b in range(1, design_batch_size + 1)
     ]
     with torch.no_grad():
-        seq_embeds = []
-        for idx in tqdm(
-            range(0, len(seq_pool), protrek_batch_size),
-            desc="ProTrek-Sequence-Embedding",
-            ncols=100,
-            disable=pid != 0,
-            postfix=f"Batch Size: {protrek_batch_size}",
-        ):
-            beg = idx
-            end = min(idx + protrek_batch_size, len(seq_pool))
-            seq_embeds.extend(model.get_protein_repr(seq_pool[beg:end]).cpu())
-            torch.cuda.empty_cache()
-    seq_ref = {seq: embed for seq, embed in zip(seq_pool, seq_embeds)}
+        seq_embeds = [[] for b in range(1, design_batch_size + 1)]
+        for b in range(1, design_batch_size + 1):
+            for idx in tqdm(
+                range(0, len(seq_pool[b - 1]), protrek_batch_size),
+                desc=f"ProTrek-Sequence-Embedding-{b}",
+                ncols=100,
+                disable=pid != 0,
+                postfix=f"Batch Size: {protrek_batch_size}",
+            ):
+                beg = idx
+                end = min(idx + protrek_batch_size, len(seq_pool[b - 1]))
+                seq_embeds[b - 1].extend(
+                    model.get_protein_repr(seq_pool[b - 1][beg:end]).cpu()
+                )
+                torch.cuda.empty_cache()
+
+    seq_ref = {}
+    for b in range(1, design_batch_size + 1):
+        for idx in range(len(seq_pool[b - 1])):
+            seq_ref[seq_pool[b - 1][idx]] = seq_embeds[b - 1][idx]
+
     # text embedding pool
     text_pool = [wholeset.function(item["instruction"]) for item in wholeset]  # type: ignore
     with torch.no_grad():
@@ -241,7 +248,7 @@ def evollama_score_evaluate_worker(
                 rAc4, rAc10, rAc20 = compute_retrieval_accuracy_batch_soft_hard(
                     pos_text_embed,
                     pos_seq_embed,
-                    seq_embeds,
+                    seq_embeds[b - 1],
                     text_embeds,
                     soft=False,
                 )
@@ -256,7 +263,7 @@ def evollama_score_evaluate_worker(
                 rAc4, rAc10, rAc20 = compute_retrieval_accuracy_batch_soft_hard(
                     pos_text_embed,
                     pos_seq_embed,
-                    seq_embeds,
+                    seq_embeds[b - 1],
                     text_embeds,
                     soft=True,
                 )
@@ -269,7 +276,7 @@ def evollama_score_evaluate_worker(
                 )
             if RetrievalDifficulty.Normal.name in retrieval_difficulties:
                 rAc4, rAc10, rAc20 = compute_retrieval_accuracy_batch(
-                    pos_text_embed, pos_seq_embed, seq_embeds
+                    pos_text_embed, pos_seq_embed, seq_embeds[b - 1]
                 )
                 res.update(
                     {
@@ -287,8 +294,10 @@ def evollama_score_evaluate_worker(
 class RetrievalAccuracyMetric(BaseMetric):
     def __init__(self, config):
         super().__init__(config)
-        self._name = config.retrievl_acc.name
-        self.retrieval_difficulties = config.retrievl_acc.retrieval_difficulties
+        self._name = config.retrieval_acc.name
+        self.retrieval_difficulties = (
+            config.retrieval_acc.retrieval_difficulties
+        )
 
     @property
     def metrics(self) -> list[str]:
@@ -356,7 +365,7 @@ class RetrievalAccuracyMetric(BaseMetric):
                         _summary.update(
                             {
                                 f"RetrievalAccuracy[{tot}]-{difficulty.name}"
-                                f"#{(b - 1) % b + 1}": rAccs[
+                                f"#{(b - 1) % bs + 1}": rAccs[
                                     f"{difficulty.name}"
                                 ][b - 1]
                                 for b in range(idx * bs + 1, (idx + 1) * bs + 1)
@@ -369,10 +378,12 @@ class RetrievalAccuracyMetric(BaseMetric):
 class RetrievalAccuracyEvaluator(BaseEvaluator):
     def __init__(self, config):
         super().__init__(config)
-        self._name = config.retrievl_acc.name
-        self.protrek_path = config.retrievl_acc.protrek_path
-        self.protrek_batch_size = config.retrievl_acc.protrek_batch_size
-        self.retrieval_difficulties = config.retrievl_acc.retrieval_difficulties
+        self._name = config.retrieval_acc.name
+        self.protrek_path = config.retrieval_acc.protrek_path
+        self.protrek_batch_size = config.retrieval_acc.protrek_batch_size
+        self.retrieval_difficulties = (
+            config.retrieval_acc.retrieval_difficulties
+        )
 
     def _execute_acclerate(self) -> None:
         raise NotImplementedError

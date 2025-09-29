@@ -8,10 +8,11 @@ import torch.nn as nn
 from tqdm.auto import tqdm
 from transformers import BertModel, BertTokenizer, logging
 
-from src.utils.context_manager import suppress_all_output, suppress_stdout
+from src.utils.context_manager import suppress_stdout
 from src.utils.multiprocess import multiprocess_evaluate
 
 from ..metric import BaseEvaluator, BaseMetric
+from .models.EvoLlama.infer import infer, init_evo_llama
 
 logging.set_verbosity_error()
 warnings.filterwarnings(
@@ -29,9 +30,6 @@ warnings.filterwarnings(
     category=FutureWarning,
     message="`torch.cuda.amp.autocast(args...)`.*",
 )
-
-with suppress_all_output():
-    from .EvoLlama.src.infer.infer import infer, init_evo_llama
 
 
 def get_embedding(

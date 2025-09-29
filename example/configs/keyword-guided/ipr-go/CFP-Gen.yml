@@ -1,0 +1,75 @@
+basic:
+  input_path: example/data/keyword-guided/ipr-go/CFP-Gen.json
+  output_dir: example/output/keyword-guided/ipr-go/CFP-Gen
+  dataset_type: KeywordDataset
+  verbose: True
+  visualize: True
+  num_gpu: -1
+  num_cpu: -1
+  design_batch_size: 3
+  speed_up: False
+  deepgo_handler: /home/jhkuang/.conda/envs/PDF-DeepGO2/bin/python
+
+  
+# Sequence
+repeat:
+  run: True
+  compute_methods: ["RepN", "Repeat"]
+  RepN: [2, 5]
+bert_score: 
+  run: True
+  compute_models: [ESM2]
+identity: 
+  run: True
+  thread_per_mmseqs: 16
+  mmseqs_ex_path: /home/jhkuang/app/mmseqs/bin/mmseqs
+perplexity:
+  run: True
+  compute_models: [ProGen2, ProtGPT2, RITA, ProteinGLM]
+
+
+# Structure
+foldability:
+  run: True
+  pdb_cache_dir: /nas/data/jhkuang/cache/dynamsa/eval/.cache/pdb_cache_dir
+tm_score:
+  run: True
+  tm_score_ex_path: /home/jhkuang/app/TMscore/TMscore
+
+
+# Language Alignment
+protrek_score: 
+  run: True
+  protrek_path: /home/nwliu/data/pretrain/ProTrek_650M_UniRef50
+evollama_score:
+  run: True
+  evollama_path: /home/nwliu/data/pretrain/EvoLlama/oracle_denovo_3B/checkpoint-50000
+  llama_name_or_path: /home/jhkuang/public/pretrain/meta-llama/Llama-3.2-3B-Instruct
+ipr_score:
+  run: True
+  interpro_scan_ex_path: /home/jhkuang/app/interproscan-5.73-104.0/interproscan.sh
+  interpro_cache_path: /home/jhkuang/data/cache/dynamsa/eval/.cache/.ipr_cache.json
+  workers_per_scan: -1
+go_score:
+  run: True
+  deepgo_root: /nas/data/jhkuang/projects/PDFBench_related/PDFBench/src/metrics/alignment/deepgo2
+  deepgo_weight_path: weights/data
+retrieval_acc:
+  run: True
+  retrieval_difficulties: [Soft, Normal, Hard]
+
+  
+# Others
+novelty:
+  run: True
+  novelties: [Sequence, Structure]
+  workers_per_mmseqs: -1
+  workers_per_foldseek: -1
+  mmseqs_ex_path: /home/jhkuang/app/mmseqs/bin/mmseqs
+  foldseek_ex_path: /home/jhkuang/app/foldseek/bin/foldseek
+  mmseqs_targetdb_path: /home/jhkuang/data/datasets/MMseqs/db/uniprotkb/uniprot_gpu
+  foldseek_targetdb_path: /home/jhkuang/data/datasets/FoldSeek/db/Alphafold_SwissProt_GPU/AlphaSwissG
+  pdb_cache_dir: /nas/data/jhkuang/cache/dynamsa/eval/.cache/pdb_cache_dir
+diversity:
+  run: True
+  diversities: [Sequence, Structure]

@@ -1,6 +1,7 @@
 import os
 
-from src.metrics import (
+from .configs import EvaluationArgs
+from .metrics import (
     BertScoreMetric,
     DiversityMetric,
     EvoLlamaScoreMetric,
@@ -8,6 +9,7 @@ from src.metrics import (
     GOScoreMetric,
     IdentityMetric,
     IPRScoreMetric,
+    MetricList,
     NoveltyMetric,
     PerplexityMetric,
     ProTrekScoreMetric,
@@ -15,9 +17,6 @@ from src.metrics import (
     RetrievalAccuracyMetric,
     TMScoreMetric,
 )
-
-from .configs import EvaluationArgs
-from .metrics import MetricList
 from .utils import logging
 from .utils.visualization import to_json
 
@@ -26,7 +25,7 @@ logger = logging.get_logger(__name__)
 
 def get_eval_args() -> EvaluationArgs:
     args = EvaluationArgs.parse()
-    assert args.launch.metric_cls is None, "--lauch.metric_cls must be None"
+    assert args.launch.metric_cls is None, "--launch.metric_cls must be None"
     logging.set_global_logger()
     logger.info_rank0(args.to_json())
     return args
@@ -40,12 +39,11 @@ def evaluate(config: EvaluationArgs) -> None:
         concerns.append(BertScoreMetric(config))
     if config.perplexity.run:
         concerns.append(PerplexityMetric(config))
-
     if config.foldability.run:
         concerns.append(FoldabilityMetric(config))
     if config.protrek_score.run:
         concerns.append(ProTrekScoreMetric(config))
-    if config.retrievl_acc.run:
+    if config.retrieval_acc.run:
         concerns.append(RetrievalAccuracyMetric(config))
     if config.evollama_score.run:
         concerns.append(EvoLlamaScoreMetric(config))

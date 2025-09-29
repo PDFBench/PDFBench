@@ -134,7 +134,7 @@ def tm_score_evaluate_worker(
                         ref=item["reference"],
                         res=item[f"response#{b}"],
                         tm_score_path=tm_score_ex_path,
-                        model=model,
+                        model=model,  # pyright: ignore[reportArgumentType]
                         tokenizer=tokenizer,
                         pdb_cache_dir=pdb_cache_dir,
                     )

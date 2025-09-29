@@ -5,11 +5,8 @@ import numpy as np
 import torch
 from tqdm.auto import tqdm
 
-from src.utils.context_manager import suppress_all_output
-
-with suppress_all_output():
-    from src.metrics.alignment.utils import load_protrek
-    from src.utils.multiprocess import multiprocess_evaluate
+from ...utils.multiprocess import multiprocess_evaluate
+from .models.ProTrek.model_load import load_protrek
 
 from ..metric import BaseEvaluator, BaseMetric
 
