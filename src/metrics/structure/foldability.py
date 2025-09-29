@@ -210,16 +210,32 @@ class FoldabilityMetric(BaseMetric):
                 for b in range(1, bs + 1)
             ]
             return {
-                "pLDDT": np.mean(plddt),
+                "pLDDT": (  # pLDDT
+                    rf"{np.mean(plddt):.2f}"
+                    r"\(\pm\)"
+                    rf"{np.std(plddt, ddof=1):.2f}"
+                ),
                 **{f"pLDDT#{b}": plddt[b - 1] for b in range(1, bs + 1)},
-                "pLDDT>70": np.mean(plddt_gt_70),
+                "pLDDT>70": (  # pLDDT > 70
+                    rf"{np.mean(plddt_gt_70):.2f}"
+                    r"\(\pm\)"
+                    rf"{np.std(plddt_gt_70, ddof=1):.2f}"
+                ),
                 **{
                     f"pLDDT>70#{b}": plddt_gt_70[b - 1]
                     for b in range(1, bs + 1)
                 },
-                "pAE": np.mean(pae),
+                "pAE": (  # pAE
+                    rf"{np.mean(pae):.2f}"
+                    r"\(\pm\)"
+                    rf"{np.std(pae, ddof=1):.2f}"
+                ),
                 **{f"pAE#{b}": pae[b - 1] for b in range(1, bs + 1)},
-                "pAE<10": np.mean(pae_lt_10),
+                "pAE<10": (  # pAE < 10
+                    rf"{np.mean(pae_lt_10):.2f}"
+                    r"\(\pm\)"
+                    rf"{np.std(pae_lt_10, ddof=1):.2f}"
+                ),
                 **{f"pAE<10#{b}": pae_lt_10[b - 1] for b in range(1, bs + 1)},
             }
 

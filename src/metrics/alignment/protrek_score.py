@@ -5,11 +5,8 @@ import numpy as np
 import torch
 from tqdm.auto import tqdm
 
-from src.utils.context_manager import suppress_all_output
-
-with suppress_all_output():
-    from src.metrics.alignment.utils import load_protrek
-    from src.utils.multiprocess import multiprocess_evaluate
+from ...utils.multiprocess import multiprocess_evaluate
+from .models.ProTrek.model_load import load_protrek
 
 from ..metric import BaseEvaluator, BaseMetric
 
@@ -89,7 +86,11 @@ class ProTrekScoreMetric(BaseMetric):
                 results[f"ProTrekScore#{b}"].mean() * 100
                 for b in range(1, bs + 1)
             ]
-            _summary["ProTrekScore"] = np.nanmean(protrek_scores)
+            _summary["ProTrekScore"] = (
+                rf"{np.mean(protrek_scores):.2f}"
+                r"\(\pm\)"
+                rf"{np.std(protrek_scores, ddof=1):.2f}"
+            )
             _summary.update(
                 {
                     f"ProTrekScore#{b}": protrek_scores[b - 1]

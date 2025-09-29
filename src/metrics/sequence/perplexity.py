@@ -311,6 +311,7 @@ class PerplexityMetric(BaseMetric):
                 f"PPL-{model.name}": results[f"PPL-{model.name}#1"].mean()
                 for model in PerplexityModel
                 if model.name in self.compute_models
+                and model != PerplexityModel.ProteinGLM
             }
         else:
             ppls = {
@@ -320,14 +321,20 @@ class PerplexityMetric(BaseMetric):
                 ]
                 for model in PerplexityModel
                 if model.name in self.compute_models
+                and model != PerplexityModel.ProteinGLM
             }
 
             out = {}
             for model in PerplexityModel:
+                if model == PerplexityModel.ProteinGLM:
+                    continue
                 if model.name in self.compute_models:
-                    out[f"PPL-{model.name}"] = np.mean(
-                        ppls[f"PPL-{model.name}"]
+                    out[f"PPL-{model.name}"] = (
+                        rf"{np.mean(ppls[f'PPL-{model.name}']):.2f}"
+                        r"\(\pm\)"
+                        rf"{np.std(ppls[f'PPL-{model.name}'], ddof=1):.2f}"
                     )
+
                     out.update(
                         {
                             f"PPL-{model.name}#{b}": ppls[f"PPL-{model.name}"][

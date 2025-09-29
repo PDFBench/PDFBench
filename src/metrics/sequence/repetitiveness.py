@@ -7,7 +7,6 @@ from src.configs.sequence_args import Repeat_Algorithm
 from src.metrics import BaseEvaluator, BaseMetric
 from src.utils.multiprocess import multiprocess_evaluate
 
-
 def compute_repeat(sequence: str) -> float:
     """
     Calculate the proportion of characters in a string that are repeated substrings
@@ -161,12 +160,20 @@ class RepetitivenessMetric(BaseMetric):
             ]
 
             out = {
-                "repeat": np.mean(repeats),
+                "repeat": (
+                    rf"{np.mean(repeats):.2f}"
+                    r"\(\pm\)"
+                    rf"{np.std(repeats, ddof=1):.2f}"
+                ),
                 **{f"repeat#{b}": repeats[b - 1] for b in range(1, bs + 1)},
             }
 
             for idx, n in enumerate(self.RepN):
-                out[f"rep{n}"] = np.mean(repns[idx])
+                out[f"rep{n}"] = (
+                    rf"{np.mean(repns[idx]):.2f}"
+                    r"\(\pm\)"
+                    rf"{np.std(repns[idx], ddof=1):.2f}"
+                )
                 out.update(
                     {f"rep{n}#{b}": repns[idx][b - 1] for b in range(1, bs + 1)}
                 )

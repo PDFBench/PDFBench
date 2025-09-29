@@ -60,7 +60,7 @@ class EvaluationArgs(Args):
     evollama_score: EvoLlamaScoreArguments
     ipr_score: IPRScoreArguments
     go_score: GOScoreArguments
-    retrievl_acc: RetrievalAccuracyArguments
+    retrieval_acc: RetrievalAccuracyArguments
     # Others
     novelty: NoveltyArguments
     diversity: DiversityArguments
@@ -120,14 +120,14 @@ class EvaluationArgs(Args):
 
         # protrek
         protrek_path = (
-            self.protrek_score.protrek_path or self.retrievl_acc.protrek_path
+            self.protrek_score.protrek_path or self.retrieval_acc.protrek_path
         )
         if protrek_path:
-            self.protrek_score.protrek_path = self.retrievl_acc.protrek_path = (
-                protrek_path
-            )
+            self.protrek_score.protrek_path = (
+                self.retrieval_acc.protrek_path
+            ) = protrek_path
         else:
             raise ValueError(
                 "At least one `protrek_path` in "
-                "[`protrek_score`, `retrievl_acc`] must be set"
+                "[`protrek_score`, `retrieval_acc`] must be set"
             )

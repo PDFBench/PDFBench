@@ -14,7 +14,7 @@ class BaseDataset(Dataset, ABC):
         """
         Load result dataset from JSON file.
 
-        :param str path: Path to the JSON file containing the results in [official format](?)   # TODO: add link
+        :param str path: Path to the JSON file containing the results in [PDFBench official repository](https://github.com/PDFBench/PDFBench/blob/master/README.md)
         """
         # Path Check
         if type(path) is str:
@@ -40,7 +40,7 @@ class BaseDataset(Dataset, ABC):
                 )
             except AssertionError as e:
                 raise RuntimeError(
-                    "Error in JSON file, please check the above error message and official tutorial in ?"  # TODO: add link
+                    "Error in JSON file, please check the above error message and official tutorial at https://github.com/PDFBench/PDFBench/blob/master/README.md"
                 ) from e
 
     @property
@@ -58,29 +58,14 @@ class BaseDataset(Dataset, ABC):
 
     def __getitem__(self, key: int | slice) -> dict | list[dict] | list[str]:
         """
-        _summary_
+        Get subset of the dataset
 
-        :param int key: _description_
-        :raises TypeError: _description_
-        :return dict | list[dict] | list[str]: _description_
+        :param int key: index or slice of the dataset
+        :raises TypeError: if key is not int or slice
+        :return dict | list[dict] | list[str]: subset of the dataset
         """
         if isinstance(key, (int, slice)):
             return self.data[key]
-        # elif isinstance(key, str):
-        #     # response
-        #     assert key in self.support_keys, (
-        #         f"key must belong to {self.support_keys}"
-        #     )
-        #     if key == "response":
-        #         return [
-        #             {
-        #                 f"response#{b}": item[f"response#{b}"]
-        #                 for b in range(1, self.batch_size + 1)
-        #             }
-        #             for item in self.data
-        #         ]
-        #     else:
-        #         return [item[key] for item in self.data]
         else:
             raise TypeError("key must be int, slice")
 
@@ -88,9 +73,9 @@ class BaseDataset(Dataset, ABC):
     @abstractmethod
     def function(cls, instruction: str) -> str:
         """
-        Extract the part of `Instruciton` related to **protein function**
+        Extract the part of `Instruction` related to **protein function**
 
-        :param str instruciton: Instruction of Dataset
+        :param str instruction: Instruction of Dataset
         :return str: Part of the instruction containing protein function in Dataset
         """
         ...

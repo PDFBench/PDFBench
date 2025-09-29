@@ -48,9 +48,9 @@ def get_keywords(
         ]
         out = subprocess.run(
             [ipr_scan_ex] + args,
-            # check=True,
-            # stdout=subprocess.DEVNULL,
-            # stderr=None,
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=None,
         )
         if out.returncode != 0:
             raise Exception("IPR Scan failed")
@@ -235,7 +235,11 @@ class IPRScoreMetric(BaseMetric):
                 for b in range(1, bs + 1)
             ]
             return {
-                "IPRRecovery": np.mean(ipr_recs),
+                "IPRRecovery": (
+                    rf"{np.mean(ipr_recs):.2f}"
+                    r"\(\pm\)"
+                    rf"{np.std(ipr_recs, ddof=1):.2f}"
+                ),
                 **{
                     f"IPRRecovery#{b}": ipr_recs[b - 1]
                     for b in range(1, bs + 1)

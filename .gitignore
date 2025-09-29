@@ -1,8 +1,11 @@
+# ======================
+# Python Standard Ignore 
+# ======================
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
-*.txt
 # C extensions
 *.so
 
@@ -161,38 +164,38 @@ dmypy.json
 # Cython debug symbols
 cython_debug/
 
-# EvoLlama and ProTrek Folder
-**/EvoLlama/
-**/ProTrek/
-**/deepgo2/
-
-# test
-test_*
-test/
-
-# Temporary
-**/temp/
-
-# .pdb files in Foldability
-*.pdb
-
 # pycache files
 **/__pycache__/
 *.pyc
 
-# backup files
-*.back
+# ======================
+# PDFBench Ignore 
+# ======================
 
-# VSCode
+# EvoLlama, ProTrek and EvoLlama Folder
+src/metrics/alignment/.deepgo2
+src/metrics/alignment/.ProTrek
+src/metrics/alignment/.EvoLlama
+
+# test
+**/test/
+**/.test/
+**/test_*
+**/temp/
+**/temp_*
+
+# vscode
 **/.vscode/
 
-configs/
-
-# NFS cache files
-.nfs*
+# example output
+example/**/*.json
+example/**/logs/
 
 # tools
-tools/mmseqs/*
+tools/MMseqs/*
+tools/InterProScan/*
+tools/Foldseek/*
 tools/TMScore/*
-tools/interproscan/*
-tools/foldseek/*
+
+# weights
+weights/*

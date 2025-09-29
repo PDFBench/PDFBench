@@ -114,7 +114,7 @@ class BaseMetric(ABC):
                 results = json.load(f)
         else:
             self.logger.info_rank0(
-                f"Lauching evaluation subprocess for {self.name}"
+                f"Launching evaluation subprocess for {self.name}"
             )
 
             # fmt: off
@@ -141,9 +141,13 @@ class BaseMetric(ABC):
                     " --multi_gpu --num_processes {num_processes}"
                 ).format(num_processes=self.config.basic.num_gpu)
             elif self.__class__.__name__ == "GOScoreMetric":
-                handler = "/home/jhkuang/.conda/envs/PDF-DeepGO2/bin/python"
+                assert self.config.basic.deepgo_handler is not None, (
+                    "GO Recovery need the sub env `PDF-DeepGO`, "
+                    "Please set the basic.deepgo_handler in the config file"
+                )
+                handler = self.config.basic.deepgo_handler
             else:
-                handler = "/home/jhkuang/.conda/envs/PDF/bin/python"
+                handler = self.config.basic.pdfbench_handler
 
             subprocess.run(
                 args=shlex.split(
@@ -207,11 +211,12 @@ class BaseEvaluator(ABC):
         self._output_dir = config.basic.output_dir
         self._speed_up = config.basic.speed_up
         self._name: str
+        self.log_dir = config.basic.log_dir
         self.logger = logging.get_logger(
             f"{self.__class__.__module__}.{self.__class__.__name__}"
         )
         if self.speed_up:
-            self._accelerator = accelerate.Accelerator()
+            raise NotImplementedError("Speed up is not supported yet.")
         self._dataset: BaseDataset = config.basic.dataset_type.value(
             path=config.basic.input_path,
             design_batch_size=config.basic.design_batch_size,
@@ -235,6 +240,10 @@ class BaseEvaluator(ABC):
         return os.path.join(self.output_dir, f"{self.name}.json")
 
     @property
+    def log_file(self) -> str:
+        return os.path.join(self.log_dir, f"{self.name}.log")
+
+    @property
     def design_batch_size(self) -> int:
         return self._design_batch_size
 
@@ -248,6 +257,7 @@ class BaseEvaluator(ABC):
 
     @property
     def accelerator(self):
+        raise NotImplementedError("[Speed-up]Accelerator is not supported yet.")
         if self._accelerator is None:
             raise ValueError(
                 "Accelerator of this Metric has not been initialized."
@@ -261,7 +271,9 @@ class BaseEvaluator(ABC):
     @property
     def speed_up(self) -> bool:
         if self._speed_up is None:
-            raise ValueError("Speed up of this Metric has not been set.")
+            raise ValueError(
+                "Speed-up version of this metric has not been set yet."
+            )
         return self._speed_up
 
     # endregion
@@ -292,4 +304,8 @@ class BaseEvaluator(ABC):
     def __del__(self) -> None:
         torch.cuda.empty_cache()
         if self.speed_up:
-            self.accelerator.end_training()
+            self._del_accelerator()
+
+    def _del_accelerator(self) -> None:
+        raise NotImplementedError("[Speed-up]Accelerator is not supported yet.")
+        self.accelerator.end_training()

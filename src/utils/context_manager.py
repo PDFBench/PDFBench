@@ -1,7 +1,6 @@
 import contextlib
 import os
 import sys
-import warnings
 
 
 @contextlib.contextmanager
@@ -41,11 +40,3 @@ def suppress_all_output():
         finally:
             sys.stdout = old_stdout
             sys.stderr = old_stderr
-
-
-@contextlib.contextmanager
-def suppress_warnings():
-    """上下文管理器，用于抑制警告信息"""
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
-        yield

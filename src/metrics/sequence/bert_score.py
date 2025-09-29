@@ -157,16 +157,18 @@ class BertScoreMetric(BaseMetric):
                         {
                             f"{model.name}-F1": results[
                                 f"{model.name}-F1#1"
-                            ].mean(),
+                            ].mean()
+                            * 100,
                             f"{model.name}-Precision": results[
                                 f"{model.name}-Precision#1"
-                            ].mean(),
+                            ].mean()
+                            * 100,
                             f"{model.name}-Recall": results[
                                 f"{model.name}-Recall#1"
-                            ].mean(),
+                            ].mean()
+                            * 100,
                         }
                     )
-
         else:
             scores = {
                 f"{model.name}": {
@@ -191,8 +193,10 @@ class BertScoreMetric(BaseMetric):
             for model in BertModel:
                 if model.name in self.compute_models:
                     for label in ["F1", "Precision", "Recall"]:
-                        out[f"{model.name}-{label}"] = np.mean(
-                            scores[f"{model.name}"][label]
+                        out[f"{model.name}-{label}"] = (
+                            rf"{np.mean(scores[model.name][label]):.2f}"
+                            r"\(\pm\)"
+                            rf"{np.std(scores[model.name][label], ddof=1):.2f}"
                         )
                         out.update(
                             {

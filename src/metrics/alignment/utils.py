@@ -1,9 +1,9 @@
 import os
 
-from src.utils.context_manager import suppress_all_output
+from ...utils.context_manager import suppress_all_output
 
 with suppress_all_output():
-    from src.metrics.alignment.ProTrek.model.ProTrek.protrek_trimodal_model import (
+    from .models.ProTrek.protrek_trimodal_model import (
         ProTrekTrimodalModel,
     )
 

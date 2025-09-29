@@ -18,6 +18,10 @@ class BasicArguments:
     num_gpu: int = -1
     num_cpu: int = -1
     speed_up: bool = False
+    pdfbench_handler: str = "python"
+    # Don't change this if you activate the PDFBench env
+    deepgo_handler: str | None = None
+    # Must change this if you want to use DeepGO-SE
 
     def __post_init__(self):
         if self.num_gpu == -1:

@@ -159,7 +159,11 @@ class IdentityMetric(BaseMetric):
                 results[f"identity#{b}"].mean() * 100 for b in range(1, bs + 1)
             ]
             return {
-                "identity": np.mean(identities),
+                "identity": (
+                    rf"{np.mean(identities):.2f}"
+                    r"\(\pm\)"
+                    rf"{np.std(identities, ddof=1):.2f}"
+                ),
                 **{
                     f"identity#{b}": identities[b - 1] for b in range(1, bs + 1)
                 },

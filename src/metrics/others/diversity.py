@@ -3,8 +3,7 @@ import multiprocessing as mp
 import os
 import subprocess
 import tempfile
-import warnings
-from typing import List
+from typing import List, Tuple
 
 import numpy as np
 from tqdm.auto import tqdm
@@ -69,7 +68,6 @@ def compute_tm_score(
         tmscore = gt_tmscore_output.split("\n")[1].split("\t")[3]
         return float(tmscore)
     except Exception:
-        # warnings.warn(f"TmScore Error with {e}")
         return float("nan")
 
 
@@ -79,31 +77,29 @@ def compute_structure_diversity(
     tm_score_path: str,
     model: EsmForProteinFolding,
     tokenizer: EsmTokenizer,
-) -> float:
+) -> Tuple[float, list]:
     assert len(sequences) >= 2, (
         "Structural diversity requires at least two sequences."
     )
 
-    tm_scores = []
-    eps = 1e-6
+    divs_struct = []
     for idx in range(len(sequences)):
         for idy in range(idx + 1, len(sequences)):
-            try:
-                structure_similarity = compute_tm_score(
-                    ref=sequences[idx],
-                    res=sequences[idy],
-                    tm_score_path=tm_score_path,
-                    pdb_cache_dir=pdb_cache_dir,
-                    model=model,
-                    tokenizer=tokenizer,
-                )
-                assert 0 - eps <= structure_similarity <= 1 + eps
-                tm_scores.append(1.0 - structure_similarity)
-            except (AssertionError, RuntimeError):
-                # warnings.warn(str(e))
-                continue
+            sim_struct = compute_tm_score(
+                ref=sequences[idx],
+                res=sequences[idy],
+                tm_score_path=tm_score_path,
+                pdb_cache_dir=pdb_cache_dir,
+                model=model,
+                tokenizer=tokenizer,
+            )
+            divs_struct.append([1.0 - sim_struct, idx + 1, idy + 1])
 
-    return sum(tm_scores) / len(tm_scores) if len(tm_scores) else float("nan")
+    if len(divs_struct) == 0:
+        return float("nan"), []
+    else:
+        diversity = np.array(divs_struct)[:, 0].mean()
+        return diversity, divs_struct
 
 
 def process_m8_file(file_path, n_prot=3):
@@ -124,7 +120,7 @@ def process_m8_file(file_path, n_prot=3):
     dismiss = (total - len(similarities)) * 1
     diversity = (hits + dismiss) / total
 
-    return diversity
+    return diversity, similarities
 
 
 def mmseqs_easy_search(
@@ -166,7 +162,7 @@ def mmseqs_easy_search(
 def compute_sequence_diversity(
     sequences: List[str],
     mmseqs_path: str,
-) -> float:
+) -> Tuple[float, list]:
     """
     Computes diversity within a list of sequences using MMseqs2.
 
@@ -194,11 +190,13 @@ def compute_sequence_diversity(
             temp_folder,
         )
         if res.returncode != 0:
-            warnings.warn(f"mmseqs easy-search failed with {sequences}")
-            return np.nan
-        diversity = process_m8_file(result_m8_file, n_prot=len(sequences))
+            return float("nan"), []
 
-    return diversity
+        diversity, similarities = process_m8_file(
+            result_m8_file, n_prot=len(sequences)
+        )
+
+    return diversity, similarities
 
 
 def diversity_evaluate_worker(
@@ -206,7 +204,7 @@ def diversity_evaluate_worker(
     pid: int,
     subset: list,
     design_batch_size: int,
-    diveristies: list[Diversity],
+    diversities: list[Diversity],
     mmseqs_ex_path: str,
     tm_score_ex_path: str,
     esm_fold_name_or_path: str,
@@ -214,7 +212,7 @@ def diversity_evaluate_worker(
 ) -> None:
     if (
         design_batch_size is None
-        or diveristies is None
+        or diversities is None
         or mmseqs_ex_path is None
         or mmseqs_ex_path is None
         or tm_score_ex_path is None
@@ -223,18 +221,19 @@ def diversity_evaluate_worker(
         raise ValueError(
             "Invalid kwargs: \n"
             f"design_batch_size: {design_batch_size}\n"
-            f" diveristies: {diveristies}\n"
+            f" diveristies: {diversities}\n"
             f"mmseqs_ex_path: {mmseqs_ex_path}\n"
             f"tm_score_ex_path: {tm_score_ex_path}\n"
             f"esm_fold_name_or_path: {esm_fold_name_or_path}"
         )
 
-    tokenizer = EsmTokenizer.from_pretrained(esm_fold_name_or_path)
-    model: EsmForProteinFolding = EsmForProteinFolding.from_pretrained(
-        esm_fold_name_or_path
-    ).to(f"cuda:{pid}")  # type: ignore
-    model.esm = model.esm.float()
-    model.trunk.set_chunk_size(64)  # type: ignore
+    if Diversity.Structure.name in diversities:
+        tokenizer = EsmTokenizer.from_pretrained(esm_fold_name_or_path)
+        model: EsmForProteinFolding = EsmForProteinFolding.from_pretrained(
+            esm_fold_name_or_path
+        ).to(f"cuda:{pid}")  # type: ignore
+        model.esm = model.esm.float()
+        model.trunk.set_chunk_size(64)  # type: ignore
 
     results = []
     for idx, item in enumerate(
@@ -258,32 +257,40 @@ def diversity_evaluate_worker(
             item[f"response#{b}"] for b in range(1, design_batch_size + 1)
         ]
 
-        try:
-            seq_div = compute_sequence_diversity(
-                sequences=responses,
-                mmseqs_path=mmseqs_ex_path,
+        if Diversity.Sequence.name in diversities:
+            try:
+                seq_div, seq_sims = compute_sequence_diversity(
+                    sequences=responses,
+                    mmseqs_path=mmseqs_ex_path,
+                )
+            except Exception:
+                # warnings.warn(f"Diversity Error with {e}")    # TODO: Error Logging
+                seq_div = float("nan")
+            res.update(
+                {
+                    "sequence_diversity": seq_div,
+                    "sequence_similarities": seq_sims,
+                }
             )
-        except Exception:
-            # warnings.warn(f"Diversity Error with {e}")    # TODO: Error Logging
-            seq_div = float("nan")
 
-        try:
-            struc_div = compute_structure_diversity(
-                sequences=responses,
-                pdb_cache_dir=pdb_cache_dir,
-                tm_score_path=tm_score_ex_path,
-                model=model,
-                tokenizer=tokenizer,
+        if Diversity.Structure.name in diversities:
+            try:
+                struct_div, struct_sims = compute_structure_diversity(
+                    sequences=responses,
+                    pdb_cache_dir=pdb_cache_dir,
+                    tm_score_path=tm_score_ex_path,
+                    model=model,
+                    tokenizer=tokenizer,
+                )
+            except Exception:
+                # warnings.warn(f"Diversity Error with {e}")    # TODO: Error Logging
+                struct_div = float("nan")
+            res.update(
+                {
+                    "structure_diversity": struct_div,
+                    "structure_similarities": struct_sims,
+                }
             )
-        except Exception:
-            # warnings.warn(f"Diversity Error with {e}")    # TODO: Error Logging
-            struc_div = float("nan")
-        res.update(
-            {
-                "sequence_diversity": seq_div,
-                "structure_diversity": struc_div,
-            }
-        )
 
         results.append(res)
 
@@ -332,14 +339,14 @@ class DiversityEvaluator(BaseEvaluator):
         self.esm_fold_name_or_path = config.diversity.esm_fold_name_or_path
         self.diversities = config.diversity.diversities
 
-    def _excete_manual_multiprocess(self) -> None:
+    def _execute_manual_multiprocess(self) -> None:
         results = multiprocess_evaluate(
             dataset=self.dataset,
             eval_worker=diversity_evaluate_worker,
             num_workers=self.num_gpu,
             kwargs={
                 "design_batch_size": self.design_batch_size,
-                "diveristies": self.diversities,
+                "diversities": self.diversities,
                 "mmseqs_ex_path": self.mmseqs_ex_path,
                 "tm_score_ex_path": self.tm_score_ex_path,
                 "esm_fold_name_or_path": self.esm_fold_name_or_path,
@@ -349,4 +356,4 @@ class DiversityEvaluator(BaseEvaluator):
         self.to_json(results)
 
     def execute(self) -> None:
-        self._excete_manual_multiprocess()
+        self._execute_manual_multiprocess()
