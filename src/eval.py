@@ -47,10 +47,10 @@ def evaluate(config: EvaluationArgs) -> None:
         concerns.append(RetrievalAccuracyMetric(config))
     if config.evollama_score.run:
         concerns.append(EvoLlamaScoreMetric(config))
-    if config.novelty.run:
-        concerns.append(NoveltyMetric(config))
     if config.go_score.run:
         concerns.append(GOScoreMetric(config))
+    if config.novelty.run:
+        concerns.append(NoveltyMetric(config))
     if config.identity.run:
         concerns.append(IdentityMetric(config))
     if config.tm_score.run:

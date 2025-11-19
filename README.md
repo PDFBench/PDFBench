@@ -3,7 +3,7 @@
 The paper can be viewed on the homepage: https://pdfbench.github.io/
 
 ![](assets/task_overview.png)
-\
+
 ![](assets/metric_coverage.png)
 
 ---

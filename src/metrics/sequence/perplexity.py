@@ -307,16 +307,20 @@ class PerplexityMetric(BaseMetric):
     def summary(self, results) -> dict:
         bs = self.design_batch_size
         if bs == 1:
-            return {
-                f"PPL-{model.name}": results[f"PPL-{model.name}#1"].mean()
+            return {  # remove outliers
+                f"PPL-{model.name}": results[f"PPL-{model.name}#1"][
+                    results[f"PPL-{model.name}#1"] <= 2000
+                ].mean()
                 for model in PerplexityModel
                 if model.name in self.compute_models
                 and model != PerplexityModel.ProteinGLM
             }
         else:
-            ppls = {
+            ppls = {  # remove outliers
                 f"PPL-{model.name}": [
-                    results[f"PPL-{model.name}#{b}"].mean()
+                    results[f"PPL-{model.name}#{b}"][
+                        results[f"PPL-{model.name}#{b}"] <= 2000
+                    ].mean()
                     for b in range(1, bs + 1)
                 ]
                 for model in PerplexityModel

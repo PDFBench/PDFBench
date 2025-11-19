@@ -6,9 +6,8 @@ import torch
 from tqdm.auto import tqdm
 
 from ...utils.multiprocess import multiprocess_evaluate
-from .models.ProTrek.model_load import load_protrek
-
 from ..metric import BaseEvaluator, BaseMetric
+from .models.ProTrek.model_load import load_protrek
 
 
 def protrek_score_evaluate_worker(
@@ -50,7 +49,9 @@ def protrek_score_evaluate_worker(
 
                 function, sequence = (
                     functional(item["instruction"]),
-                    item[f"response#{b}"],
+                    item[f"response#{b}"][
+                        :2048
+                    ],  # Truncate to 2048 for ProTrek
                 )
                 text_embedding = model.get_text_repr([function])
 

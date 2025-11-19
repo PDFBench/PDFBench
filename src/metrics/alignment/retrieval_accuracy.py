@@ -129,10 +129,14 @@ def compute_retrieval_accuracy(
 
     # access retrieval accuracy
     text_embed = model.get_text_repr([inst]).cpu()
-    pos_embed = model.get_protein_repr([seq]).cpu()
+    pos_embed = model.get_protein_repr(
+        [seq[:2048]]
+    ).cpu()  # Truncate to 2048 for ProTrek
     scores = [F.cosine_similarity(text_embed, pos_embed).item()]
     for neg in neg_seqs:
-        neg_embed = model.get_protein_repr([neg])
+        neg_embed = model.get_protein_repr(
+            [neg[:2048]]
+        )  # Truncate to 2048 for ProTrek
 
         scores.append(F.cosine_similarity(text_embed, neg_embed).item())
 
