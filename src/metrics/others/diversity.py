@@ -82,7 +82,7 @@ def compute_structure_diversity(
         "Structural diversity requires at least two sequences."
     )
 
-    divs_struct = []
+    diversities = []
     for idx in range(len(sequences)):
         for idy in range(idx + 1, len(sequences)):
             sim_struct = compute_tm_score(
@@ -93,17 +93,17 @@ def compute_structure_diversity(
                 model=model,
                 tokenizer=tokenizer,
             )
-            divs_struct.append([1.0 - sim_struct, idx + 1, idy + 1])
+            diversities.append([1.0 - sim_struct, idx + 1, idy + 1])
 
-    if len(divs_struct) == 0:
+    if len(diversities) == 0:
         return float("nan"), []
     else:
-        diversity = np.array(divs_struct)[:, 0].mean()
-        return diversity, divs_struct
+        diversity = np.array(diversities)[:, 0].mean()
+        return diversity, diversities
 
 
-def process_m8_file(file_path, n_prot=3):
-    similarities = []
+def process_m8_file(file_path, n_prot=3) -> Tuple[float, list[float]]:
+    diversities = []
     with open(file_path, "r") as file:
         for line in file:
             parts = line.strip().split("\t")
@@ -113,14 +113,14 @@ def process_m8_file(file_path, n_prot=3):
                 continue
 
             similarity = float(parts[2])
-            similarities.append(similarity)
+            diversities.append(1.0 - similarity)
 
     total = n_prot * (n_prot - 1)
-    hits = sum(similarities)
-    dismiss = (total - len(similarities)) * 1
-    diversity = (hits + dismiss) / total
+    diversities.extend([1.0] * (total - len(diversities)))
 
-    return diversity, similarities
+    diversity = sum(diversities) / len(diversities)
+
+    return diversity, diversities
 
 
 def mmseqs_easy_search(
@@ -192,11 +192,11 @@ def compute_sequence_diversity(
         if res.returncode != 0:
             return float("nan"), []
 
-        diversity, similarities = process_m8_file(
+        diversity, diversities = process_m8_file(
             result_m8_file, n_prot=len(sequences)
         )
 
-    return diversity, similarities
+    return diversity, diversities
 
 
 def diversity_evaluate_worker(
@@ -259,23 +259,24 @@ def diversity_evaluate_worker(
 
         if Diversity.Sequence.name in diversities:
             try:
-                seq_div, seq_sims = compute_sequence_diversity(
+                seq_div, seq_divs = compute_sequence_diversity(
                     sequences=responses,
                     mmseqs_path=mmseqs_ex_path,
                 )
             except Exception:
                 # warnings.warn(f"Diversity Error with {e}")    # TODO: Error Logging
                 seq_div = float("nan")
+                seq_divs = []
             res.update(
                 {
                     "sequence_diversity": seq_div,
-                    "sequence_similarities": seq_sims,
+                    "sequence_diversities": seq_divs,
                 }
             )
 
         if Diversity.Structure.name in diversities:
             try:
-                struct_div, struct_sims = compute_structure_diversity(
+                struct_div, struct_divs = compute_structure_diversity(
                     sequences=responses,
                     pdb_cache_dir=pdb_cache_dir,
                     tm_score_path=tm_score_ex_path,
@@ -285,10 +286,11 @@ def diversity_evaluate_worker(
             except Exception:
                 # warnings.warn(f"Diversity Error with {e}")    # TODO: Error Logging
                 struct_div = float("nan")
+                struct_divs = []
             res.update(
                 {
                     "structure_diversity": struct_div,
-                    "structure_similarities": struct_sims,
+                    "structure_diversities": struct_divs,
                 }
             )
 

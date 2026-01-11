@@ -181,6 +181,9 @@ class MetricList:
         self._metrics = metrics
         self._visualize = config.basic.visualize
         self._output_dir = config.basic.output_dir
+        self.logger = logging.get_logger(
+            f"{self.__class__.__module__}.{self.__class__.__name__}"
+        )
 
     @property
     def metrics(self) -> list[BaseMetric]:
@@ -197,7 +200,17 @@ class MetricList:
     def evaluate(self):
         results: list[EvaluationOutput] = []
         for metric in self.metrics:
-            results.append(metric.evaluate())
+            import time
+
+            start_time = time.time()
+            self.logger.info_rank0(f"Evaluating {metric.name}")
+            result = metric.evaluate()
+            end_time = time.time()
+            elapsed = end_time - start_time
+            self.logger.info_rank0(
+                f"Finished {metric.name} evaluation in {int(elapsed // 60)}min{int(elapsed % 60):02d}sec"
+            )
+            results.append(result)
         return results
 
 
