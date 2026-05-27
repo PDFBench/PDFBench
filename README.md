@@ -20,6 +20,15 @@ PDFBench is the first comprehensive benchmark for function-guided de novo protei
 
 ![](assets/metric_coverage.png)
 
+## News
+
+---
+
+- [2026/05/01]: 🎉 PDFBench was accepted to [ICML 2026](https://openreview.net/forum?id=Z6dCaMpiqV).
+- the new version of PDFBench will coming soon...
+
+## Installation
+
 ---
 
 ### 1. Environment
