@@ -1,6 +1,20 @@
-## PDFBench: A Benchmark for De novo Protein Design from Function
+# PDFBench
 
-The paper can be viewed on the homepage: https://pdfbench.github.io/
+---
+
+<p align="left">
+  <a href="https://arxiv.org/abs/2505.20346">
+    <img src="https://img.shields.io/badge/arXiv-2505.20346-b31b1b.svg?style=flat-square" />
+  </a>
+  <a href="https://pdfbench.github.io/">
+    <img src="https://img.shields.io/badge/Project-Homepage-2ea44f.svg?style=flat-square" />
+  </a>
+  <a href="https://huggingface.co/datasets/Knlife/SwissInPro">
+    <img src="https://img.shields.io/badge/HuggingFace-SwissInPro-yellow.svg?style=flat-square&logo=huggingface" />
+  </a>
+</p>
+
+PDFBench is the first comprehensive benchmark for function-guided de novo protein design.
 
 ![](assets/task_overview.png)
 
